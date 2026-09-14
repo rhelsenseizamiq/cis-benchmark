@@ -14,13 +14,14 @@ from . import __version__
 from .core.config import load_settings
 from .core.engine import ComplianceEngine
 from .importer.aws_parser import parse as parse_aws
+from .importer.azure_parser import parse as parse_azure
 from .importer.errors import ImporterError
 from .importer.pdf_extract import extract_text
 from .reporters.doc_reporter import DocReporter
 from .reporters.excel_reporter import ExcelReporter
 from .reporters.html_reporter import HTMLReporter
 
-_IMPORT_PARSERS = {"aws": parse_aws}
+_IMPORT_PARSERS = {"aws": parse_aws, "azure": parse_azure}
 _KNOWN_COMMANDS = {"scan", "import"}
 
 BANNER = """
@@ -209,11 +210,18 @@ def _run_import(args):
     if args.cloud not in _IMPORT_PARSERS:
         raise ImporterError(
             f"`cis import --cloud {args.cloud}` is not implemented yet. "
-            "Only --cloud aws is supported today."
+            f"Supported today: {', '.join(sorted(_IMPORT_PARSERS.keys()))}."
         )
 
     text = extract_text(args.pdf_path)
     catalog = _IMPORT_PARSERS[args.cloud](text, source_filename=os.path.basename(args.pdf_path))
+
+    if not catalog.version_verified:
+        print(
+            f"Warning: this PDF's version ({catalog.benchmark_version}) hasn't been "
+            f"verified against real data for --cloud {args.cloud}. Results may be "
+            "inaccurate — treat with extra scrutiny."
+        )
 
     output_path = args.output or os.path.join("imports", f"{args.cloud}_{catalog.benchmark_version}.json")
     try:

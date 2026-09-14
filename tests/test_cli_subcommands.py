@@ -77,9 +77,26 @@ def test_run_import_writes_catalog_and_prints_summary(tmp_path, monkeypatch, cap
 
 
 def test_run_import_rejects_unimplemented_cloud():
-    args = argparse.Namespace(cloud="azure", pdf_path="fake.pdf", output=None)
+    args = argparse.Namespace(cloud="workspace", pdf_path="fake.pdf", output=None)
     with pytest.raises(ImporterError, match="not implemented yet"):
         cli._run_import(args)
+
+
+def test_run_import_prints_warning_for_unverified_version(tmp_path, monkeypatch, capsys):
+    fake_catalog = BenchmarkCatalog(
+        benchmark_name="Fake", benchmark_version="0.0.1",
+        source_filename="fake.pdf", extracted_at="now",
+        version_verified=False, rules=[],
+    )
+    monkeypatch.setattr(cli, "extract_text", lambda path: "irrelevant")
+    monkeypatch.setattr(cli, "_IMPORT_PARSERS", {"aws": lambda text, source_filename="": fake_catalog})
+
+    args = argparse.Namespace(cloud="aws", pdf_path="fake.pdf", output=str(tmp_path / "out.json"))
+    cli._run_import(args)
+
+    captured = capsys.readouterr()
+    assert "Warning" in captured.out
+    assert "0.0.1" in captured.out
 
 
 def test_run_import_default_output_path(tmp_path, monkeypatch):
@@ -117,7 +134,7 @@ def test_run_import_wraps_unwritable_output_path_in_importer_error(monkeypatch):
 
 
 def test_main_prints_clean_error_and_exits_1_on_importer_error(monkeypatch, capsys):
-    monkeypatch.setattr(cli.sys, "argv", ["cis", "import", "fake.pdf", "--cloud", "azure"])
+    monkeypatch.setattr(cli.sys, "argv", ["cis", "import", "fake.pdf", "--cloud", "workspace"])
     with pytest.raises(SystemExit) as exc_info:
         cli.main()
     assert exc_info.value.code == 1
