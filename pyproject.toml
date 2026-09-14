@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cis-benchmark"
+version = "1.4.0"
+description = "Unified multi-cloud CIS Benchmark compliance & audit CLI (AWS, Azure, GCP, Google Workspace)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Zamiq Mustafayev" }]
+dependencies = [
+    "rich>=13.7.0",
+    "openpyxl>=3.1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+cis = "cis_benchmark.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cis_benchmark"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

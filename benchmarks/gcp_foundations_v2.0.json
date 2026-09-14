@@ -1,0 +1,62 @@
+{
+  "_note": "Reference documentation only. Not loaded at runtime — modules/gcp_checks.py is the source of truth for check logic. Keep this file's rule list in sync with the classes implemented there; do not list rules that have no corresponding check class.",
+  "benchmark": "CIS Google Cloud Platform Foundations Benchmark",
+  "version": "v2.0.0",
+  "framework": "GCP Foundations",
+  "rules": [
+    {
+      "id": "GCP-1.1",
+      "section": "1. Identity & Access Management (IAM)",
+      "title": "Ensure User-Managed Service Account Keys are rotated every 90 days or less",
+      "severity": "HIGH",
+      "rationale": "Service account keys do not automatically expire. Stale keys exposed in source code or backup files create long-term persistent backdoor access.",
+      "remediation": "Delete old key IDs and rotate to new service account keys using gcloud iam service-accounts keys delete."
+    },
+    {
+      "id": "GCP-1.2",
+      "section": "1. Identity & Access Management (IAM)",
+      "title": "Ensure Primitive Roles (Owner/Editor) are not used for service accounts",
+      "severity": "CRITICAL",
+      "rationale": "Primitive roles grant blanket read/write/delete privileges across all resources in a GCP project.",
+      "remediation": "Replace roles/owner and roles/editor with predefined, least-privileged IAM roles."
+    },
+    {
+      "id": "GCP-3.1",
+      "section": "3. Networking & Perimeter Security",
+      "title": "Ensure no VPC Firewall rules allow unrestricted 0.0.0.0/0 ingress to SSH (22)",
+      "severity": "CRITICAL",
+      "rationale": "Exposing SSH globally invites automated brute-force attacks and zero-day exploitation.",
+      "remediation": "Modify firewall rule sourceRanges to trusted corporate IP blocks or use Identity-Aware Proxy (IAP)."
+    },
+    {
+      "id": "GCP-3.2",
+      "section": "3. Networking & Perimeter Security",
+      "title": "Ensure no VPC Firewall rules allow unrestricted 0.0.0.0/0 ingress to RDP (3389)",
+      "severity": "CRITICAL",
+      "rationale": "Remote Desktop Protocol exposed to the internet is heavily targeted for ransomware deployment.",
+      "remediation": "Restrict RDP ingress rules or mandate VPN / IAP desktop access."
+    },
+    {
+      "id": "GCP-4.1",
+      "section": "4. Storage & Storage Buckets",
+      "title": "Ensure Cloud Storage Buckets do not allow public allUsers or allAuthenticatedUsers read/write",
+      "severity": "CRITICAL",
+      "rationale": "Public GCS buckets expose proprietary source code, credentials, and customer PII to unauthorized internet scraping.",
+      "remediation": "gcloud storage buckets remove-iam-policy-binding gs://BUCKET --member=allUsers --role=ROLE"
+    },
+    {
+      "id": "GCP-5.1",
+      "section": "5. Databases & Cloud SQL",
+      "title": "Ensure Cloud SQL Instances do not have public IPv4 addresses assigned",
+      "severity": "HIGH",
+      "rationale": "Direct public IP assignments to databases increase attack surface for SQL injection and brute-force attempts.",
+      "remediation": "Disable IPv4 public network assignment and configure Private IP (VPC Peering)."
+    }
+  ],
+  "planned_not_yet_implemented": [
+    "GCP-2.1 Ensure Cloud Audit Logging is enabled for all services and data access",
+    "GCP-2.2 Ensure Log Sinks are configured to export audit logs to BigQuery or Cloud Storage",
+    "GCP-4.2 Ensure Uniform Bucket-Level Access is enabled on all Cloud Storage Buckets",
+    "GCP-5.2 Ensure Cloud SQL Instances require SSL/TLS connections for all clients"
+  ]
+}

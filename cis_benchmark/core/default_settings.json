@@ -1,0 +1,16 @@
+{
+  "project_name": "CIS Unified Cloud & Workspace Compliance Engine",
+  "gcp_project_id": null,
+  "google_workspace_domain": "example.com",
+  "max_worker_threads": 10,
+  "key_expiration_threshold_days": 90,
+  "output_directory": "./output",
+  "enabled_reports": ["html", "excel", "markdown"],
+  "severity_weights": {
+    "CRITICAL": 10,
+    "HIGH": 7,
+    "MEDIUM": 4,
+    "LOW": 1,
+    "INFO": 0
+  }
+}

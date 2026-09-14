@@ -1,0 +1,60 @@
+{
+  "_note": "Reference documentation only. Not loaded at runtime — modules/workspace_checks.py is the source of truth for check logic. Keep this file's rule list in sync with the classes implemented there; do not list rules that have no corresponding check class.",
+  "benchmark": "CIS Google Workspace Benchmark",
+  "version": "v1.4.0",
+  "framework": "Google Workspace",
+  "rules": [
+    {
+      "id": "WS-1.1",
+      "section": "1. Account & Authentication",
+      "title": "Ensure 2-Step Verification (2SV) is enforced for all users",
+      "severity": "CRITICAL",
+      "rationale": "2-Step Verification adds an essential layer of security to prevent unauthorized access from compromised credentials.",
+      "remediation": "Admin Console -> Security -> Authentication -> 2-Step Verification -> Turn on enforcement.",
+      "automation_status": "MANUAL_CHECK — requires Admin SDK Directory/Reports API with domain-wide delegation, not yet implemented."
+    },
+    {
+      "id": "WS-1.2",
+      "section": "1. Account & Authentication",
+      "title": "Ensure Security Key (FIDO2) is required for Super Admin accounts",
+      "severity": "CRITICAL",
+      "rationale": "Super Admin accounts have full domain privileges. SMS or push notifications are susceptible to interception and phishing.",
+      "remediation": "Admin Console -> Security -> Authentication -> 2-Step Verification -> Select Only Security Key for Admins.",
+      "automation_status": "MANUAL_CHECK — requires Admin SDK Directory API with domain-wide delegation, not yet implemented."
+    },
+    {
+      "id": "WS-3.1",
+      "section": "3. Gmail Security",
+      "title": "Ensure SPF, DKIM, and DMARC DNS policies are fully configured",
+      "severity": "CRITICAL",
+      "rationale": "Email authentication protocols protect your domain from spoofing, impersonation, and phishing attacks.",
+      "remediation": "Configure DNS TXT records for SPF (v=spf1), DKIM (2048-bit key), and DMARC (p=quarantine or p=reject).",
+      "automation_status": "Automated via DNS lookups (dig)."
+    },
+    {
+      "id": "WS-4.1",
+      "section": "4. Apps & OAuth Control",
+      "title": "Ensure Unconfigured Third-Party OAuth Apps are Restricted by default",
+      "severity": "HIGH",
+      "rationale": "Allowing arbitrary third-party apps to request OAuth scopes risks unauthorized access to domain data.",
+      "remediation": "Admin Console -> Security -> Access and data control -> API Controls -> Unconfigured third-party apps -> Set to Restricted.",
+      "automation_status": "MANUAL_CHECK — requires Admin SDK API, not yet implemented."
+    },
+    {
+      "id": "WS-5.1",
+      "section": "5. Audit & Compliance Logging",
+      "title": "Ensure Admin SDK Activity and System Logs are enabled & exported",
+      "severity": "MEDIUM",
+      "rationale": "Centralized audit logging enables incident investigation, threat detection, and compliance auditing.",
+      "remediation": "Enable Admin SDK Logging in API Console and stream logs to Google Cloud Logging or a SIEM.",
+      "automation_status": "MANUAL_CHECK — requires Admin SDK Reports API, not yet implemented."
+    }
+  ],
+  "planned_not_yet_implemented": [
+    "WS-1.3 Ensure Web Session Duration is set to a maximum of 14 hours",
+    "WS-1.4 Ensure Less Secure Apps (LSA) access is disabled domain-wide",
+    "WS-2.1 Ensure External File Sharing is Restricted or set to Warn Users",
+    "WS-2.2 Ensure 'Anyone with the link' sharing is disabled for sensitive OUs",
+    "WS-3.2 Ensure Automatic External Mail Forwarding is disabled"
+  ]
+}
