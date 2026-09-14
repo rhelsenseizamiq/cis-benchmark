@@ -267,12 +267,12 @@ def test_trailing_glyph_after_scored_marker_does_not_break_detection():
     """Regression test for PDF checkbox-glyph artifacts trailing the (Scored)
     marker. These glyphs (Private Use Area Unicode chars like U+F06F) break
     end-anchored regexes, so the parser must find the marker anywhere and
-    take everything before it as the title. This test includes a literal
-    U+F06F character (Private Use Area) after (Scored) in the Summary Table
+    take everything before it as the title. This test includes a U+F06F
+    character (Private Use Area) after (Scored) in the Summary Table
     to simulate the real PDF artifact.
     """
     # U+F06F is a Private Use Area character used in PDF form glyphs
-    glyph = ""
+    glyph = chr(0xF06F)
     text = f'''CIS Amazon Web Services Foundations
 Benchmark
 v9.9.9 - 01-01-2099
