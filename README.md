@@ -1,5 +1,7 @@
 # 🛡️ CIS Unified Multi-Cloud Compliance & Audit CLI
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 A high-performance, professional terminal CLI security auditing tool for **AWS**, **Microsoft Azure**, **Google Cloud Platform (GCP)**, and **Google Workspace**.
 
 ---
@@ -128,14 +130,6 @@ CIS_Benchmark/
 > loaded at runtime, so the check logic in code is always the source of
 > truth.
 
-> **Note on `benchmarks/*.json` and `config/settings.json`:** `benchmarks/` is
-> reference documentation mirroring the rules actually implemented in
-> `modules/*_checks.py` — it is **not** loaded at runtime, so the check logic
-> in code is always the source of truth. `config/settings.json` **is** read
-> (via `core/config.py`) to provide default values for `--workers`,
-> `--output`, `--domain`, and the GCP key-rotation threshold; a missing or
-> invalid settings file silently falls back to built-in defaults.
-
 ---
 
 ## 📋 Result Statuses
@@ -147,3 +141,9 @@ CIS_Benchmark/
 | ⚠️ `WARNING` | The check ran but found a soft issue (e.g. a weak-but-present DMARC policy). |
 | 🔍 `MANUAL_CHECK` | This rule is not yet automated (e.g. it needs Admin SDK / Microsoft Graph API access this tool doesn't call) — verify it manually. It never reports PASS or FAIL. |
 | 💥 `ERROR` | The underlying CLI call itself failed (auth, network, bad flag) — the control's real state is unknown, and this must not be read as compliant. |
+
+---
+
+## 📄 License
+
+Licensed under the [Apache License 2.0](LICENSE).

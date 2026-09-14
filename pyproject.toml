@@ -8,8 +8,15 @@ version = "1.4.0"
 description = "Unified multi-cloud CIS Benchmark compliance & audit CLI (AWS, Azure, GCP, Google Workspace)"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Proprietary" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Zamiq Mustafayev" }]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Environment :: Console",
+    "Intended Audience :: System Administrators",
+    "Topic :: Security",
+]
 dependencies = [
     "rich>=13.7.0",
     "openpyxl>=3.1.2",
