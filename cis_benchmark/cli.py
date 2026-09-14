@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 from datetime import datetime, timezone
 
 from rich.align import Align
@@ -12,9 +13,15 @@ from rich.text import Text
 from . import __version__
 from .core.config import load_settings
 from .core.engine import ComplianceEngine
+from .importer.aws_parser import parse as parse_aws
+from .importer.errors import ImporterError
+from .importer.pdf_extract import extract_text
 from .reporters.doc_reporter import DocReporter
 from .reporters.excel_reporter import ExcelReporter
 from .reporters.html_reporter import HTMLReporter
+
+_IMPORT_PARSERS = {"aws": parse_aws}
+_KNOWN_COMMANDS = {"scan", "import"}
 
 BANNER = """
 [bold cyan]   ██████╗██╗███████╗    ██████╗ ███████╗███╗   ██╗██╗  ██╗[/bold cyan]
@@ -165,19 +172,71 @@ def _run_rich(engine, out_dir):
     console.print()
 
 
+def _normalize_argv(argv):
+    """Bare `cis --cloud aws` (no explicit subcommand) keeps working by
+    defaulting to `scan` — every command documented before the `cis import`
+    subcommand was added continues to work completely unchanged.
+    """
+    if not argv:
+        return ["scan"]
+    if argv[0] in _KNOWN_COMMANDS or argv[0] in ("-h", "--help", "--version"):
+        return list(argv)
+    return ["scan"] + list(argv)
+
+
+def _build_parser(settings):
+    parser = argparse.ArgumentParser(prog="cis", description="CIS Unified Multi-Cloud Compliance & Audit CLI")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+
+    subparsers = parser.add_subparsers(dest="command")
+
+    scan_parser = subparsers.add_parser("scan", help="Run compliance checks against your cloud accounts (default)")
+    scan_parser.add_argument("--cloud", type=str, default="all", choices=["all", "gcp", "workspace", "aws", "azure"], help="Cloud provider target filter")
+    scan_parser.add_argument("--domain", type=str, default=settings["google_workspace_domain"], help="Target domain for Workspace checks")
+    scan_parser.add_argument("--workers", type=int, default=settings["max_worker_threads"], help="Number of concurrent worker threads")
+    scan_parser.add_argument("--output", type=str, default=settings["output_directory"], help="Output directory for generated reports")
+    scan_parser.add_argument("--plain", action="store_true", help="Plain, non-interactive output with no colors/progress bar (for cron, CI, or log capture)")
+
+    import_parser = subparsers.add_parser("import", help="Convert an official CIS Benchmark PDF into a structured JSON rule catalog")
+    import_parser.add_argument("pdf_path", type=str, help="Path to a downloaded CIS Benchmark PDF")
+    import_parser.add_argument("--cloud", type=str, required=True, choices=["aws", "azure", "gcp", "workspace"], help="Which benchmark this PDF is")
+    import_parser.add_argument("--output", type=str, default=None, help="Output JSON path (default: imports/<cloud>_<version>.json)")
+
+    return parser
+
+
+def _run_import(args):
+    if args.cloud not in _IMPORT_PARSERS:
+        raise ImporterError(
+            f"`cis import --cloud {args.cloud}` is not implemented yet. "
+            "Only --cloud aws is supported today."
+        )
+
+    text = extract_text(args.pdf_path)
+    catalog = _IMPORT_PARSERS[args.cloud](text, source_filename=os.path.basename(args.pdf_path))
+
+    output_path = args.output or os.path.join("imports", f"{args.cloud}_{catalog.benchmark_version}.json")
+    catalog.write(output_path)
+
+    total = len(catalog.rules)
+    incomplete = sum(1 for r in catalog.rules if r.incomplete)
+    print(f"Parsed {total} rule(s) ({incomplete} incomplete) -> {output_path}")
+
+
 def main():
     settings = load_settings()
-    parser = argparse.ArgumentParser(description="CIS Unified Multi-Cloud Compliance & Audit CLI")
-    parser.add_argument("--cloud", type=str, default="all", choices=["all", "gcp", "workspace", "aws", "azure"], help="Cloud provider target filter")
-    parser.add_argument("--domain", type=str, default=settings["google_workspace_domain"], help="Target domain for Workspace checks")
-    parser.add_argument("--workers", type=int, default=settings["max_worker_threads"], help="Number of concurrent worker threads")
-    parser.add_argument("--output", type=str, default=settings["output_directory"], help="Output directory for generated reports")
-    parser.add_argument("--plain", action="store_true", help="Plain, non-interactive output with no colors/progress bar (for cron, CI, or log capture)")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    args = parser.parse_args()
+    parser = _build_parser(settings)
+    args = parser.parse_args(_normalize_argv(sys.argv[1:]))
+
+    if args.command == "import":
+        try:
+            _run_import(args)
+        except ImporterError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        return
 
     engine = ComplianceEngine(max_workers=args.workers, target_domain=args.domain, cloud_filter=args.cloud)
-
     if args.plain:
         _run_plain(engine, args.output)
     else:
