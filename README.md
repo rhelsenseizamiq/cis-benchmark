@@ -11,7 +11,7 @@ A high-performance, professional terminal CLI security auditing tool for **AWS**
 - 🚀 **Fast Parallel Execution**: Evaluates 18 multi-cloud security checks in sub-second execution (< 1 second, network/API latency aside).
 - 🎨 **Rich Terminal Interface**: Professional ASCII header banner, live progress bars, status badges, and executive score cards.
 - ☁️ **Multi-Cloud Support**: AWS, Microsoft Azure, Google Cloud Platform (GCP), and Google Workspace.
-- 📥 **Benchmark PDF Import**: `cis import <pdf> --cloud aws` parses an official CIS Benchmark PDF into a structured JSON rule catalog (AWS only today).
+- 📥 **Benchmark PDF Import**: `cis import <pdf> --cloud <aws|azure|gcp>` parses an official CIS Benchmark PDF into a structured JSON rule catalog.
 - 📊 **Multi-Format Export**: Generates **Interactive HTML Dashboard**, **Excel Workbook (.xlsx)**, and **Markdown (.md)** reports.
 
 ---
@@ -32,7 +32,7 @@ This tool does **not** implement the full official CIS Benchmarks. It implements
 1. **The rule IDs are this project's own, not CIS's.** `AWS-1.1`, `GCP-3.2`, etc. are numbered by this codebase for its own bookkeeping — they do not correspond to the official CIS Benchmark's own section/control numbers. Don't cite them as if they were.
 2. **A "100% compliance score" from this tool is not the same as "CIS Benchmark compliant."** It means these 18 specific checks passed — nothing more. For a full, official assessment, use the actual CIS Benchmark PDFs (free, requires a CIS account) from **https://www.cisecurity.org/cis-benchmarks**, or a CIS-certified scanning tool.
 
-As of this version, `cis import` can parse an official CIS AWS Foundations Benchmark PDF into a complete, structured JSON catalog of all its recommendations (see "Importing an official benchmark PDF" below) — but this produces a *reference catalog* for coverage tracking, not new automated checks. A PDF describes what to check in prose; it can't generate the AWS-CLI-calling verification logic a real check needs. Azure/GCP/Workspace PDF import is not yet implemented.
+As of this version, `cis import` can parse official CIS Benchmark PDFs (AWS, Azure, GCP) into a complete, structured JSON catalog of all their recommendations (see "Importing an official benchmark PDF" below) — but this produces a *reference catalog* for coverage tracking, not new automated checks. A PDF describes what to check in prose; it can't generate the CLI-calling verification logic a real check needs. Google Workspace PDF import is not yet implemented.
 
 ---
 
@@ -125,11 +125,13 @@ sudo apt-get install poppler-utils
 
 **Getting a PDF:** Download the official benchmark from
 [cisecurity.org/cis-benchmarks](https://www.cisecurity.org/cis-benchmarks)
-(free CIS account required). Only the AWS Foundations Benchmark is
-supported today.
+(free CIS account required). AWS, Azure, and GCP are supported today;
+Google Workspace is not yet implemented.
 
 ```bash
 cis import /path/to/CIS_AWS_Foundations_Benchmark.pdf --cloud aws
+cis import /path/to/CIS_Microsoft_Azure_Foundations_Benchmark.pdf --cloud azure
+cis import /path/to/GCP_CIS_Foundation_Benchmark.pdf --cloud gcp
 ```
 
 Writes to `imports/aws_<version>.json` by default (override with
@@ -144,6 +146,22 @@ An `incomplete: true` rule in the output JSON means the parser found that
 recommendation but one of its expected sections (Description/Rationale/
 Remediation) was missing — check `missing_sections` on that rule and treat
 its data as partial.
+
+Each cloud's parser is only verified against the specific benchmark
+version(s) actually tested against real data (see the table below). If a
+PDF's detected version isn't in that list, the import still proceeds
+(never blocked), but the catalog is stamped `"version_verified": false`
+and the CLI prints a warning — treat results from an unverified version
+with extra scrutiny; the document's structure may differ from what the
+parser expects, and it's already the case (found by testing against real
+Azure/GCP data) that even the same rough CIS template era can differ in
+heading text and classification vocabulary between benchmark generations.
+
+| Cloud | Verified version(s) |
+| :--- | :--- |
+| AWS | 1.2.0 |
+| Azure | 1.4.0 |
+| GCP | 1.2.0 |
 
 ---
 
