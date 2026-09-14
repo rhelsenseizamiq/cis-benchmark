@@ -235,3 +235,29 @@ def test_missing_rule_in_body_raises_importer_error():
 def test_empty_summary_table_raises_importer_error():
     with pytest.raises(ImporterError):
         parse("Recommendations\n\nAppendix: Summary Table\n\nAppendix: Change History\n")
+
+
+# Fixture where "Appendix: Summary Table" appears twice: once as a fake TOC
+# dot-leader entry (early, with trailing dots and page number like ". . 152"),
+# and once as the real section near the end (the actual summary table data).
+# This reproduces the exact bug that would occur with .find() — it would
+# match the first (TOC) occurrence instead of the last (real) one.
+FIXTURE_WITH_TOC_COLLISION = (
+    "CIS Amazon Web Services Foundations\nBenchmark\nv9.9.9 - 01-01-2099\n\n"
+    "Table of Contents\n\n"
+    "Recommendations .......................................................... 9\n"
+    "Appendix: Summary Table .......................................................... 152\n"
+    "Appendix: Change History .......................................................... 155\n\n"
+) + FIXTURE_HAPPY_PATH
+
+
+def test_toc_dot_leader_mention_of_summary_table_is_not_mistaken_for_the_real_section():
+    """Regression test for the rfind() fix. When "Appendix: Summary Table"
+    appears both in the Table of Contents (early, as a dot-leader entry)
+    and as the real section (late), parse() must use the LAST occurrence
+    to find the actual table, not the first. If it used .find() instead of
+    .rfind(), it would match the TOC entry, extract a tiny slice with zero
+    rules, and raise "found zero recommendations in it".
+    """
+    catalog = parse(FIXTURE_WITH_TOC_COLLISION)
+    assert [r.id for r in catalog.rules] == ["1.1", "1.2", "1.3"]

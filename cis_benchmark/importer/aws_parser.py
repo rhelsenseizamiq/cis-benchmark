@@ -33,6 +33,21 @@ def _find_index(text: str, marker: str) -> int:
     return idx
 
 
+def _find_last_index(text: str, marker: str) -> int:
+    """Like _find_index, but returns the LAST occurrence. Needed for markers
+    (like "Appendix: Summary Table") that also appear earlier in the
+    document's own Table of Contents as a dot-leader entry — the real
+    section is always the last occurrence, never the first.
+    """
+    idx = text.rfind(marker)
+    if idx == -1:
+        raise ImporterError(
+            f"Could not locate {marker!r} in the extracted text — this "
+            "document's structure doesn't match what this parser expects."
+        )
+    return idx
+
+
 def _parse_summary_table(text: str):
     """Returns an ordered list of (rule_id, section_name, title, scored)
     parsed from the PDF's own "Appendix: Summary Table" — the authoritative
@@ -40,7 +55,7 @@ def _parse_summary_table(text: str):
     itself, which would misidentify numbered cross-references inside
     "CIS Controls:" sections as new rules.
     """
-    start = _find_index(text, "Appendix: Summary Table")
+    start = _find_last_index(text, "Appendix: Summary Table")
     end = text.find("Appendix: Change History", start)
     if end == -1:
         end = len(text)
