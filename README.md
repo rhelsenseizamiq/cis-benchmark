@@ -8,14 +8,30 @@ A high-performance, professional terminal CLI security auditing tool for **AWS**
 
 ## ⚡ Features & Capabilities
 
-- 🚀 **Ultra-Fast Parallel Execution**: Evaluates 18+ multi-cloud security rules in sub-second execution (< 1 second).
+- 🚀 **Fast Parallel Execution**: Evaluates 18 multi-cloud security checks in sub-second execution (< 1 second, network/API latency aside).
 - 🎨 **Rich Terminal Interface**: Professional ASCII header banner, live progress bars, status badges, and executive score cards.
-- ☁️ **Multi-Cloud Support**:
-  - 🟠 **AWS**: CIS AWS Foundations Benchmark v1.5
-  - 🔵 **Azure**: CIS Microsoft Azure Foundations Benchmark v2.0
-  - 🟢 **GCP**: CIS Google Cloud Platform Foundations Benchmark v2.0
-  - 🔴 **Google Workspace**: CIS Google Workspace Benchmark v1.4
+- ☁️ **Multi-Cloud Support**: AWS, Microsoft Azure, Google Cloud Platform (GCP), and Google Workspace.
 - 📊 **Multi-Format Export**: Generates **Interactive HTML Dashboard**, **Excel Workbook (.xlsx)**, and **Markdown (.md)** reports.
+
+---
+
+## 🎯 Scope & Coverage — read this before you trust a score
+
+This tool does **not** implement the full official CIS Benchmarks. It implements a small, hand-picked set of **18 checks total**, chosen because they're common, high-impact, and checkable via each provider's CLI:
+
+| Cloud | Checks implemented | Real official benchmark size (for comparison) |
+| :--- | :--- | :--- |
+| 🟠 AWS | 4 (root MFA, S3 public access block, SG unrestricted SSH, CloudTrail) | CIS AWS Foundations Benchmark has 50+ recommendations |
+| 🔵 Azure | 3 (privileged MFA — manual, storage public blob, NSG unrestricted SSH) | CIS Azure Foundations Benchmark has 100+ recommendations |
+| 🟢 GCP | 6 (SA key age, primitive roles, firewall SSH/RDP, public buckets, Cloud SQL public IP) | CIS GCP Foundations Benchmark has 90+ recommendations |
+| 🔴 Google Workspace | 5 (4 are honest `MANUAL_CHECK` placeholders — see below; only SPF/DMARC is automated) | CIS Google Workspace Benchmark has 60+ recommendations |
+
+**Two things this means in practice:**
+
+1. **The rule IDs are this project's own, not CIS's.** `AWS-1.1`, `GCP-3.2`, etc. are numbered by this codebase for its own bookkeeping — they do not correspond to the official CIS Benchmark's own section/control numbers. Don't cite them as if they were.
+2. **A "100% compliance score" from this tool is not the same as "CIS Benchmark compliant."** It means these 18 specific checks passed — nothing more. For a full, official assessment, use the actual CIS Benchmark PDFs (free, requires a CIS account) from **https://www.cisecurity.org/cis-benchmarks**, or a CIS-certified scanning tool.
+
+There is currently no automated pipeline that downloads or parses those official PDFs into this tool's check set — every check here was written by hand against the provider's CLI. If you want that pipeline built (download → parse → drive checks from the real benchmark), that's a real feature to design, not a quick fix — ask and we'll scope it properly.
 
 ---
 
@@ -28,7 +44,7 @@ Before scanning, ensure your environment or CLI is authenticated with read-only 
 | 🟢 **Google Cloud (GCP)** | `gcloud auth login` or `GOOGLE_APPLICATION_CREDENTIALS` | `Security Reviewer` (`roles/iam.securityReviewer`) or `Viewer` |
 | 🟠 **AWS** | `aws configure` or `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | `SecurityAudit` or `ReadOnlyAccess` managed policy |
 | 🔵 **Microsoft Azure** | `az login` or `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_CLIENT_SECRET` | `Reader` role on Target Subscription |
-| 🔴 **Google Workspace** | Target domain (e.g. `company.com`) + Workspace Admin auth | Admin SDK API + Workspace Admin permissions |
+| 🔴 **Google Workspace** | Just `--domain company.com` — no Google auth needed today | None. Only the SPF/DMARC check is automated (public DNS lookups); the other 4 checks are `MANUAL_CHECK` placeholders that call no API at all. Admin SDK + Workspace Admin permissions will be required once those are implemented for real. |
 
 ---
 
