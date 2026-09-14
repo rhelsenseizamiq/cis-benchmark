@@ -11,6 +11,7 @@ A high-performance, professional terminal CLI security auditing tool for **AWS**
 - 🚀 **Fast Parallel Execution**: Evaluates 18 multi-cloud security checks in sub-second execution (< 1 second, network/API latency aside).
 - 🎨 **Rich Terminal Interface**: Professional ASCII header banner, live progress bars, status badges, and executive score cards.
 - ☁️ **Multi-Cloud Support**: AWS, Microsoft Azure, Google Cloud Platform (GCP), and Google Workspace.
+- 📥 **Benchmark PDF Import**: `cis import <pdf> --cloud aws` parses an official CIS Benchmark PDF into a structured JSON rule catalog (AWS only today).
 - 📊 **Multi-Format Export**: Generates **Interactive HTML Dashboard**, **Excel Workbook (.xlsx)**, and **Markdown (.md)** reports.
 
 ---
@@ -21,7 +22,7 @@ This tool does **not** implement the full official CIS Benchmarks. It implements
 
 | Cloud | Checks implemented | Real official benchmark size (for comparison) |
 | :--- | :--- | :--- |
-| 🟠 AWS | 4 (root MFA, S3 public access block, SG unrestricted SSH, CloudTrail) | CIS AWS Foundations Benchmark has 50+ recommendations |
+| 🟠 AWS | 4 (root MFA, S3 public access block, SG unrestricted SSH, CloudTrail) | CIS AWS Foundations Benchmark **v1.2.0** has 49 recommendations (verified via `cis import`) |
 | 🔵 Azure | 3 (privileged MFA — manual, storage public blob, NSG unrestricted SSH) | CIS Azure Foundations Benchmark has 100+ recommendations |
 | 🟢 GCP | 6 (SA key age, primitive roles, firewall SSH/RDP, public buckets, Cloud SQL public IP) | CIS GCP Foundations Benchmark has 90+ recommendations |
 | 🔴 Google Workspace | 5 (4 are honest `MANUAL_CHECK` placeholders — see below; only SPF/DMARC is automated) | CIS Google Workspace Benchmark has 60+ recommendations |
@@ -31,7 +32,7 @@ This tool does **not** implement the full official CIS Benchmarks. It implements
 1. **The rule IDs are this project's own, not CIS's.** `AWS-1.1`, `GCP-3.2`, etc. are numbered by this codebase for its own bookkeeping — they do not correspond to the official CIS Benchmark's own section/control numbers. Don't cite them as if they were.
 2. **A "100% compliance score" from this tool is not the same as "CIS Benchmark compliant."** It means these 18 specific checks passed — nothing more. For a full, official assessment, use the actual CIS Benchmark PDFs (free, requires a CIS account) from **https://www.cisecurity.org/cis-benchmarks**, or a CIS-certified scanning tool.
 
-There is currently no automated pipeline that downloads or parses those official PDFs into this tool's check set — every check here was written by hand against the provider's CLI. If you want that pipeline built (download → parse → drive checks from the real benchmark), that's a real feature to design, not a quick fix — ask and we'll scope it properly.
+As of this version, `cis import` can parse an official CIS AWS Foundations Benchmark PDF into a complete, structured JSON catalog of all its recommendations (see "Importing an official benchmark PDF" below) — but this produces a *reference catalog* for coverage tracking, not new automated checks. A PDF describes what to check in prose; it can't generate the AWS-CLI-calling verification logic a real check needs. Azure/GCP/Workspace PDF import is not yet implemented.
 
 ---
 
@@ -99,6 +100,48 @@ Drops the Rich banner/progress bar/live table in favor of simple line-per-rule o
 ```bash
 cis --version
 ```
+
+---
+
+## 📥 Importing an Official Benchmark PDF
+
+`cis import` turns an official CIS Benchmark PDF into a structured JSON
+catalog of every recommendation in it — useful for seeing exactly how much
+of the real benchmark this tool's 18 automated checks actually cover. It
+does **not** create new automated checks (see Scope & Coverage above).
+
+**Prerequisite:** `pdftotext`, from `poppler-utils` — only needed for
+`cis import`, not for `cis scan`.
+
+```bash
+# macOS
+brew install poppler
+
+# Debian/Ubuntu
+sudo apt-get install poppler-utils
+```
+
+**Getting a PDF:** Download the official benchmark from
+[cisecurity.org/cis-benchmarks](https://www.cisecurity.org/cis-benchmarks)
+(free CIS account required). Only the AWS Foundations Benchmark is
+supported today.
+
+```bash
+cis import /path/to/CIS_AWS_Foundations_Benchmark.pdf --cloud aws
+```
+
+Writes to `imports/aws_<version>.json` by default (override with
+`--output`). That directory is gitignored: the generated JSON reproduces
+CIS's own copyrighted rule text (descriptions, rationale, remediation
+steps), so it isn't committed automatically — check CIS's terms of use
+before committing it yourself.
+
+The command reports how many rules it found and how many it couldn't fully
+parse, e.g. `Parsed 49 rule(s) (0 incomplete) -> imports/aws_1.2.0.json`.
+An `incomplete: true` rule in the output JSON means the parser found that
+recommendation but one of its expected sections (Description/Rationale/
+Remediation) was missing — check `missing_sections` on that rule and treat
+its data as partial.
 
 ---
 
