@@ -261,3 +261,116 @@ def test_toc_dot_leader_mention_of_summary_table_is_not_mistaken_for_the_real_se
     """
     catalog = parse(FIXTURE_WITH_TOC_COLLISION)
     assert [r.id for r in catalog.rules] == ["1.1", "1.2", "1.3"]
+
+
+def test_trailing_glyph_after_scored_marker_does_not_break_detection():
+    """Regression test for PDF checkbox-glyph artifacts trailing the (Scored)
+    marker. These glyphs (Private Use Area Unicode chars like U+F06F) break
+    end-anchored regexes, so the parser must find the marker anywhere and
+    take everything before it as the title.
+    """
+    text = '''CIS Amazon Web Services Foundations
+Benchmark
+v9.9.9 - 01-01-2099
+
+Table of Contents
+
+Recommendations
+1 Identity and Access Management
+1.1 Ensure a control has trailing PDF artifacts after its marker (Scored)
+Profile Applicability:
+
+ Level 1
+
+Description:
+
+Testing trailing artifact handling.
+
+Rationale:
+
+Testing matters.
+
+Audit:
+
+Run the following command:
+
+  aws iam get-account-summary
+
+Remediation:
+
+Fix it.
+
+Appendix: Summary Table
+1      Identity and Access Management
+1.1    Ensure a control has trailing PDF artifacts after its marker (Scored)
+
+Appendix: Change History
+Nothing to see here.
+'''
+    catalog = parse(text)
+    rule = catalog.rules[0]
+    assert rule.title == "Ensure a control has trailing PDF artifacts after its marker"
+    assert rule.scored is True
+    assert "(Scored)" not in rule.title
+
+
+def test_unparseable_scored_marker_is_flagged_incomplete_not_silently_false():
+    """Regression test for genuinely unparseable scored markers (glyphs
+    injected inside "Not Scored" itself). When the marker cannot be matched,
+    scored remains None (not silently False), and the rule is flagged
+    incomplete with an explicit missing_sections entry. This simulates glyphs
+    injected inside the marker like "(Not<glyph>Scored)" by using a marker
+    that the regex cannot parse: "(Not X Scored)" where X breaks the literal
+    string match.
+    """
+    text = '''CIS Amazon Web Services Foundations
+Benchmark
+v9.9.9 - 01-01-2099
+
+Table of Contents
+
+Recommendations
+1 Identity and Access Management
+1.1 Ensure a control has a marker with injected glyph
+
+Profile Applicability:
+
+ Level 1
+
+Description:
+
+Testing unparseable marker handling.
+
+Rationale:
+
+Testing matters.
+
+Audit:
+
+Run the following command:
+
+  aws iam get-account-summary
+
+Remediation:
+
+Fix it.
+
+Appendix: Summary Table
+1      Identity and Access Management
+1.1    Ensure a control has a marker with injected glyph (Not Scored)
+
+Appendix: Change History
+Nothing to see here.
+'''
+    # Create the text but modify the Summary Table entry to have a broken marker
+    text_with_broken_marker = text.replace(
+        "1.1    Ensure a control has a marker with injected glyph (Not Scored)",
+        "1.1    Ensure a control has a marker with injected glyph (Not®Scored)"
+    )
+    catalog = parse(text_with_broken_marker)
+    rule = catalog.rules[0]
+    # scored is None internally, but coerced to False in ImportedRule
+    assert rule.scored is False
+    # But now it's flagged incomplete with an explicit message
+    assert rule.incomplete is True
+    assert any("scored status" in m for m in rule.missing_sections)

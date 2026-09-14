@@ -5,7 +5,7 @@ from .schema import BenchmarkCatalog, ImportedRule, now_iso
 
 _RULE_ID_RE = re.compile(r"^(\d+(?:\.\d+){1,2})\s")
 _SECTION_ID_RE = re.compile(r"^(\d+)\s+(.+)$")
-_SCORED_SUFFIX_RE = re.compile(r"\((Scored|Not Scored)\)\s*$")
+_SCORED_RE = re.compile(r"\((Scored|Not Scored)\)")
 _VERSION_RE = re.compile(r"v(\d+\.\d+\.\d+)\s*-\s*[\d-]+")
 
 _LABELS = [
@@ -70,9 +70,9 @@ def _parse_summary_table(text: str):
         nonlocal pending_id, pending_lines
         if pending_id is not None:
             joined = " ".join(l.strip() for l in pending_lines if l.strip())
-            m = _SCORED_SUFFIX_RE.search(joined)
+            m = _SCORED_RE.search(joined)
             scored = (m.group(1) == "Scored") if m else None
-            title = _SCORED_SUFFIX_RE.sub("", joined).strip()
+            title = joined[:m.start()].strip() if m else joined.strip()
             anchors.append((pending_id, current_section, title, scored))
         pending_id = None
         pending_lines = []
@@ -161,6 +161,8 @@ def parse(text: str, source_filename: str = "") -> BenchmarkCatalog:
 
         fields = _split_block_into_sections(block)
         missing = [lbl for lbl in _REQUIRED_LABELS if lbl not in fields]
+        if scored is None:
+            missing.append("scored status (could not parse from Summary Table)")
 
         profile_raw = fields.get("Profile Applicability:", "")
         if "Level 2" in profile_raw:
