@@ -337,7 +337,7 @@ Remediation:
 
 Remove root access keys.
 
-1.2 Ensure IAM policies are attached only to groups or roles (Scored)
+1.2 Ensure access policies are attached only to teams or roles (Scored)
 Description:
 
 Policies should not be attached directly to users.
@@ -351,7 +351,7 @@ Remediation:
 Detach direct user policies.
 
 2 Logging and Monitoring
-2.1 Ensure CloudTrail is enabled in all regions (Scored)
+2.1 Ensure activity logging is enabled in all regions (Scored)
 Description:
 
 CloudTrail should be enabled across all regions.
@@ -378,7 +378,7 @@ Remediation:
 
 Restrict port 22 ingress to known ranges.
 
-3.2 Ensure VPC flow logging is enabled in all VPCs (Scored)
+3.2 Ensure network flow logging is enabled in all virtual networks (Scored)
 Description:
 
 Flow logs capture network traffic metadata.
@@ -397,12 +397,12 @@ Appendix: Summary Table
                                                                           Yes No
 1      Identity and Access Management
 1.1    Ensure account root access keys are removed (Scored)
-1.2    Ensure IAM policies are attached only to groups or roles (Scored)
+1.2    Ensure access policies are attached only to teams or roles (Scored)
 2      Logging and Monitoring
-2.1    Ensure CloudTrail is enabled in all regions (Scored)
+2.1    Ensure activity logging is enabled in all regions (Scored)
 3      Networking
 3.1    Ensure no security group allows ingress from 0.0.0.0/0 to port 22 (Scored)
-3.2    Ensure VPC flow logging is enabled in all VPCs (Scored)
+3.2    Ensure network flow logging is enabled in all virtual networks (Scored)
 
 Appendix: Change History
 Nothing to see here.
@@ -494,7 +494,7 @@ Table of Contents
 Recommendations
 1 Database Services
 1.1 Example Database Grouping
-1.1.1 Ensure that 'Auditing' is set to 'On' (Automated)
+1.1.1 Ensure that 'Change Tracking' is set to 'On' (Automated)
 Profile Applicability:
 
  Level 1
@@ -511,7 +511,7 @@ Remediation:
 
 Enable auditing.
 
-1.1.2 Ensure that 'Retention' is 'greater than 90 days' (Manual)
+1.1.2 Ensure that 'History Window' is 'greater than 90 days' (Manual)
 Profile Applicability:
 
  Level 1
@@ -532,8 +532,8 @@ Appendix: Recommendation Summary
 Table
 1        Database Services
 1.1      Example Database Grouping
-1.1.1    Ensure that 'Auditing' is set to 'On' (Automated)
-1.1.2    Ensure that 'Retention' is 'greater than 90 days' (Manual)
+1.1.1    Ensure that 'Change Tracking' is set to 'On' (Automated)
+1.1.2    Ensure that 'History Window' is 'greater than 90 days' (Manual)
 
 Appendix: Change History
 Nothing to see here.

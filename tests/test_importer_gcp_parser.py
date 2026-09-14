@@ -8,7 +8,7 @@ Table of Contents
 
 Recommendations
 1 Identity and Access Management
-1.1 Ensure that corporate login credentials are used (Manual)
+1.1 Ensure that federated identity accounts are required (Manual)
 Description:
 
 Example description text.
@@ -24,7 +24,7 @@ Example remediation text.
 Appendix: Recommendation Summary
 Table
 1        Identity and Access Management
-1.1      Ensure that corporate login credentials are used (Manual)
+1.1      Ensure that federated identity accounts are required (Manual)
 
 Appendix: Change History
 Nothing to see here.
