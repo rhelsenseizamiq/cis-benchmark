@@ -13,3 +13,4 @@ venv/
 output/*.html
 output/*.xlsx
 output/*.md
+*.pdf
