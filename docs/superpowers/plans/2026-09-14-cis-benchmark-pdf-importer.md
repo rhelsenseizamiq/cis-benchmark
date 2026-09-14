@@ -316,7 +316,7 @@ git commit -m "Add PDF text extraction wrapper for the benchmark importer"
 
 ### Task 3: AWS benchmark parser (`aws_parser.py`)
 
-This is the core parsing logic — a two-pass strategy validated by hand against a real CIS AWS Foundations Benchmark v1.2.0 PDF during design (see spec's Investigation Findings). Pass 1 parses the PDF's own "Appendix: Summary Table" into an authoritative ordered rule list (title/scored, handling titles that wrap across lines). Pass 2 uses that list as anchors to carve the "Recommendations" body into per-rule blocks — critically, this never scans the body for "any line starting with a number," which would misidentify numbered cross-references inside `CIS Controls:` sections (e.g. `4.5 Use Multifactor Authentication...`) as new rule boundaries.
+This is the core parsing logic — a two-pass strategy validated by hand against a real CIS AWS Foundations Benchmark v1.2.0 PDF during design (see spec's Investigation Findings). Pass 1 parses the PDF's own "Appendix: Summary Table" into an authoritative ordered rule list (title/scored, handling titles that wrap across lines). Pass 2 uses that list as anchors to carve the "Recommendations" body into per-rule blocks — critically, this never scans the body for "any line starting with a number," which would misidentify numbered cross-references inside `CIS Controls:` sections (e.g. `9.9 Require A Second Authentication Factor...`) as new rule boundaries.
 
 **Files:**
 - Create: `cis_benchmark/importer/aws_parser.py`
@@ -340,7 +340,7 @@ from cis_benchmark.importer.aws_parser import parse
 # wrinkles found by inspecting a real CIS AWS Foundations Benchmark PDF
 # during design: a title that wraps across two lines before its
 # (Scored)/(Not Scored) marker, a CIS Controls cross-reference number
-# ("4.5 Use Multifactor...") that must NOT be mistaken for a new rule,
+# ("9.9 Require A Second...") that must NOT be mistaken for a new rule,
 # and one deliberately-incomplete rule (missing Remediation:) to exercise
 # the incomplete-flagging path. No real CIS content — see spec Licensing.
 FIXTURE_HAPPY_PATH = '''CIS Amazon Web Services Foundations
@@ -383,8 +383,8 @@ References:
 
 CIS Controls:
 
-4.5 Use Multifactor Authentication For All Administrative Access
-Use multi-factor authentication for all administrative account access.
+9.9 Require A Second Authentication Factor For Privileged Accounts
+Require a second authentication factor for all privileged account access.
 
 1.2 Ensure multi-factor authentication (MFA) is enabled for all IAM users that have a
 console password (Scored)
@@ -416,8 +416,8 @@ References:
 
 CIS Controls:
 
-4.5 Use Multifactor Authentication For All Administrative Access
-Use multi-factor authentication for all administrative account access.
+9.9 Require A Second Authentication Factor For Privileged Accounts
+Require a second authentication factor for all privileged account access.
 
 1.3 Ensure this rule is intentionally left incomplete (Not Scored)
 Profile Applicability:
@@ -533,7 +533,7 @@ def test_cis_controls_cross_reference_is_not_mistaken_for_a_new_rule():
     assert len(catalog.rules) == 3
     assert "4.5" not in [r.id for r in catalog.rules]
     rule_1_1 = next(r for r in catalog.rules if r.id == "1.1")
-    assert "4.5 Use Multifactor Authentication" in rule_1_1.cis_controls
+    assert "9.9 Require A Second Authentication Factor" in rule_1_1.cis_controls
 
 
 def test_fields_extracted_correctly_for_a_complete_rule():
