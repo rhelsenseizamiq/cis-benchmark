@@ -87,7 +87,7 @@ def _parse_summary_table(text: str):
             pending_id = rule_m.group(1)
             pending_lines = [line[len(pending_id):]]
             continue
-        section_m = _SECTION_ID_RE.match(line) if pending_id is None else None
+        section_m = _SECTION_ID_RE.match(line)
         if section_m and "." not in section_m.group(1):
             flush()
             current_section = f"{section_m.group(1)}. {section_m.group(2).strip()}"
@@ -132,6 +132,10 @@ def parse(text: str, source_filename: str = "") -> BenchmarkCatalog:
 
     anchors = _parse_summary_table(text)
 
+    # Unlike "Appendix: Summary Table", this marker is safe with the first
+    # occurrence: the TOC's own "Recommendations" entry always has trailing
+    # dot-leaders/a page number on the same line, so it never matches this
+    # exact-line marker (which requires an immediate newline after the word).
     body_start = _find_index(text, "\nRecommendations\n")
     body_end = text.find("Appendix: Summary Table", body_start)
     if body_end == -1:

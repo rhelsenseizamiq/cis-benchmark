@@ -7,7 +7,7 @@ from cis_benchmark.importer.aws_parser import parse
 # wrinkles found by inspecting a real CIS AWS Foundations Benchmark PDF
 # during design: a title that wraps across two lines before its
 # (Scored)/(Not Scored) marker, a CIS Controls cross-reference number
-# ("4.5 Use Multifactor...") that must NOT be mistaken for a new rule,
+# ("9.9 Require A Second...") that must NOT be mistaken for a new rule,
 # and one deliberately-incomplete rule (missing Remediation:) to exercise
 # the incomplete-flagging path. No real CIS content — see spec Licensing.
 FIXTURE_HAPPY_PATH = '''CIS Amazon Web Services Foundations
@@ -50,7 +50,7 @@ References:
 
 CIS Controls:
 
-4.5 Use Multifactor Authentication For All Administrative Access
+9.9 Require A Second Authentication Factor For Privileged Accounts
 Use multi-factor authentication for all administrative account access.
 
 1.2 Ensure a secondary verification factor is required for every user account that can
@@ -83,7 +83,7 @@ References:
 
 CIS Controls:
 
-4.5 Use Multifactor Authentication For All Administrative Access
+9.9 Require A Second Authentication Factor For Privileged Accounts
 Use multi-factor authentication for all administrative account access.
 
 1.3 Ensure this rule is intentionally left incomplete (Not Scored)
@@ -196,11 +196,11 @@ def test_wrapped_title_is_joined_correctly():
 def test_cis_controls_cross_reference_is_not_mistaken_for_a_new_rule():
     catalog = parse(FIXTURE_HAPPY_PATH)
     # There must be exactly 3 rules — a broken parser would produce a
-    # phantom "4.5" rule from the CIS Controls cross-reference text.
+    # phantom "9.9" rule from the CIS Controls cross-reference text.
     assert len(catalog.rules) == 3
-    assert "4.5" not in [r.id for r in catalog.rules]
+    assert "9.9" not in [r.id for r in catalog.rules]
     rule_1_1 = next(r for r in catalog.rules if r.id == "1.1")
-    assert "4.5 Use Multifactor Authentication" in rule_1_1.cis_controls
+    assert "9.9 Require A Second Authentication Factor" in rule_1_1.cis_controls
 
 
 def test_fields_extracted_correctly_for_a_complete_rule():
@@ -316,6 +316,126 @@ Nothing to see here.
     assert rule.title == "Ensure a control has trailing PDF artifacts after its marker"
     assert rule.scored is True
     assert "(Scored)" not in rule.title
+
+
+# Regression fixture for the Critical section-detection bug: a section
+# heading line (no decimal point, e.g. "2 Logging and Monitoring") that
+# appears between rule blocks — i.e. right after the previous rule's own
+# Summary Table row, before that row has been flushed — must still update
+# current_section. Covers 3 distinct top-level sections, each with 1-2
+# rules, present in both the body and the Summary Table.
+FIXTURE_MULTI_SECTION = '''CIS Amazon Web Services Foundations
+Benchmark
+v9.9.9 - 01-01-2099
+
+Table of Contents
+
+Recommendations
+1 Identity and Access Management
+1.1 Ensure account root access keys are removed (Scored)
+Description:
+
+Root access keys should not exist.
+
+Rationale:
+
+Root has unrestricted access.
+
+Remediation:
+
+Remove root access keys.
+
+1.2 Ensure IAM policies are attached only to groups or roles (Scored)
+Description:
+
+Policies should not be attached directly to users.
+
+Rationale:
+
+Grouping eases permission management.
+
+Remediation:
+
+Detach direct user policies.
+
+2 Logging and Monitoring
+2.1 Ensure CloudTrail is enabled in all regions (Scored)
+Description:
+
+CloudTrail should be enabled across all regions.
+
+Rationale:
+
+Centralized logging aids incident response.
+
+Remediation:
+
+Enable CloudTrail in all regions.
+
+3 Networking
+3.1 Ensure no security group allows ingress from 0.0.0.0/0 to port 22 (Scored)
+Description:
+
+Security groups should restrict SSH ingress.
+
+Rationale:
+
+Open SSH exposes hosts to brute force attacks.
+
+Remediation:
+
+Restrict port 22 ingress to known ranges.
+
+3.2 Ensure VPC flow logging is enabled in all VPCs (Scored)
+Description:
+
+Flow logs capture network traffic metadata.
+
+Rationale:
+
+Flow logs aid network forensics.
+
+Remediation:
+
+Enable flow logging for every VPC.
+
+Appendix: Summary Table
+                         Control                                             Set
+                                                                          Correctly
+                                                                          Yes No
+1      Identity and Access Management
+1.1    Ensure account root access keys are removed (Scored)
+1.2    Ensure IAM policies are attached only to groups or roles (Scored)
+2      Logging and Monitoring
+2.1    Ensure CloudTrail is enabled in all regions (Scored)
+3      Networking
+3.1    Ensure no security group allows ingress from 0.0.0.0/0 to port 22 (Scored)
+3.2    Ensure VPC flow logging is enabled in all VPCs (Scored)
+
+Appendix: Change History
+Nothing to see here.
+'''
+
+
+def test_section_updates_correctly_between_rule_blocks_in_summary_table():
+    """Regression test for the Critical section-misassignment bug: a section
+    heading with no decimal point (e.g. "2 Logging and Monitoring") that
+    appears in the Summary Table right after the previous rule's row — while
+    that row's pending_id is still set, i.e. before flush() runs — must
+    still update current_section. Before the fix, the `pending_id is None`
+    gate silently skipped section detection in exactly this situation, and
+    every rule after the first section's rules was mislabeled with section 1.
+    """
+    catalog = parse(FIXTURE_MULTI_SECTION, source_filename="fixture.pdf")
+    sections_by_id = {r.id: r.section for r in catalog.rules}
+    assert sections_by_id["1.1"] == "1. Identity and Access Management"
+    assert sections_by_id["1.2"] == "1. Identity and Access Management"
+    assert sections_by_id["2.1"] == "2. Logging and Monitoring"
+    assert sections_by_id["3.1"] == "3. Networking"
+    assert sections_by_id["3.2"] == "3. Networking"
+    # Distinct sections must actually be distinct — a broken parser would
+    # collapse all of these into "1. Identity and Access Management".
+    assert len(set(sections_by_id.values())) == 3
 
 
 def test_unparseable_scored_marker_is_flagged_incomplete_not_silently_false():

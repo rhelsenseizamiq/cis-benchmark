@@ -97,6 +97,25 @@ def test_run_import_default_output_path(tmp_path, monkeypatch):
     assert (tmp_path / "imports" / "aws_1.2.3.json").exists()
 
 
+def test_run_import_wraps_unwritable_output_path_in_importer_error(monkeypatch):
+    fake_catalog = BenchmarkCatalog(
+        benchmark_name="Fake Benchmark", benchmark_version="9.9.9",
+        source_filename="fake.pdf", extracted_at="now",
+        rules=[ImportedRule(id="1.1", title="t", scored=True, profile_level="Level 1", section="1. X")],
+    )
+    monkeypatch.setattr(cli, "extract_text", lambda path: "irrelevant")
+    monkeypatch.setattr(cli, "_IMPORT_PARSERS", {"aws": lambda text, source_filename="": fake_catalog})
+
+    def _raise_os_error(self, path):
+        raise OSError("Read-only file system")
+
+    monkeypatch.setattr(BenchmarkCatalog, "write", _raise_os_error)
+
+    args = argparse.Namespace(cloud="aws", pdf_path="fake.pdf", output="/nonexistent/out.json")
+    with pytest.raises(ImporterError, match="Could not write output file"):
+        cli._run_import(args)
+
+
 def test_main_prints_clean_error_and_exits_1_on_importer_error(monkeypatch, capsys):
     monkeypatch.setattr(cli.sys, "argv", ["cis", "import", "fake.pdf", "--cloud", "azure"])
     with pytest.raises(SystemExit) as exc_info:

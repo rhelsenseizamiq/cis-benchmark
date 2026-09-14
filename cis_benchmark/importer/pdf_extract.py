@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 
@@ -9,6 +10,14 @@ _INSTALL_HINT = (
     "  macOS:         brew install poppler\n"
     "  Debian/Ubuntu: sudo apt-get install poppler-utils\n"
 )
+
+# Page-footer lines like "35 | P a g e" or "4|Page" (pdftotext -layout
+# sometimes letter-spaces the footer text; spacing varies by page).
+_PAGE_FOOTER_RE = re.compile(r"^\s*\d+\s*\|\s*P\s*a\s*g\s*e\s*$", re.MULTILINE)
+# Unicode Private Use Area glyphs (checkbox/bullet symbols from the PDF's
+# embedded fonts, e.g. U+F06F, U+F0B7) that pdftotext emits as raw codepoints
+# scattered inline in titles and body text.
+_PUA_GLYPH_RE = re.compile(r"[-]")
 
 
 def extract_text(pdf_path: str) -> str:
@@ -33,4 +42,7 @@ def extract_text(pdf_path: str) -> str:
     if result.returncode != 0:
         raise ImporterError(f"pdftotext failed on {pdf_path}: {result.stderr.strip()}")
 
-    return result.stdout.replace("\x0c", "")
+    text = result.stdout.replace("\x0c", "")
+    text = _PAGE_FOOTER_RE.sub("", text)
+    text = _PUA_GLYPH_RE.sub("", text)
+    return text

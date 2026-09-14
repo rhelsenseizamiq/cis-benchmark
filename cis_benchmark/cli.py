@@ -216,7 +216,10 @@ def _run_import(args):
     catalog = _IMPORT_PARSERS[args.cloud](text, source_filename=os.path.basename(args.pdf_path))
 
     output_path = args.output or os.path.join("imports", f"{args.cloud}_{catalog.benchmark_version}.json")
-    catalog.write(output_path)
+    try:
+        catalog.write(output_path)
+    except OSError as e:
+        raise ImporterError(f"Could not write output file {output_path}: {e}")
 
     total = len(catalog.rules)
     incomplete = sum(1 for r in catalog.rules if r.incomplete)

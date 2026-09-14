@@ -65,6 +65,8 @@ That gives you a real `cis` command on your `PATH` (via `pyproject.toml`'s `cons
 
 ## 💻 CLI Usage
 
+> Run `cis scan --help` or `cis import --help` to see each subcommand's full flag list — `cis --help` alone only lists the subcommand names.
+
 ### Run All Clouds
 ```bash
 cis --cloud all --domain yourdomain.com
