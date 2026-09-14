@@ -62,7 +62,7 @@ def test_run_import_writes_catalog_and_prints_summary(tmp_path, monkeypatch, cap
     fake_catalog = BenchmarkCatalog(
         benchmark_name="Fake Benchmark", benchmark_version="9.9.9",
         source_filename="fake.pdf", extracted_at="now",
-        rules=[ImportedRule(id="1.1", title="t", scored=True, profile_level="Level 1", section="1. X")],
+        rules=[ImportedRule(id="1.1", title="t", classification="Scored", profile_level="Level 1", section="1. X")],
     )
     monkeypatch.setattr(cli, "extract_text", lambda path: "irrelevant")
     monkeypatch.setattr(cli, "_IMPORT_PARSERS", {"aws": lambda text, source_filename="": fake_catalog})
@@ -101,7 +101,7 @@ def test_run_import_wraps_unwritable_output_path_in_importer_error(monkeypatch):
     fake_catalog = BenchmarkCatalog(
         benchmark_name="Fake Benchmark", benchmark_version="9.9.9",
         source_filename="fake.pdf", extracted_at="now",
-        rules=[ImportedRule(id="1.1", title="t", scored=True, profile_level="Level 1", section="1. X")],
+        rules=[ImportedRule(id="1.1", title="t", classification="Scored", profile_level="Level 1", section="1. X")],
     )
     monkeypatch.setattr(cli, "extract_text", lambda path: "irrelevant")
     monkeypatch.setattr(cli, "_IMPORT_PARSERS", {"aws": lambda text, source_filename="": fake_catalog})

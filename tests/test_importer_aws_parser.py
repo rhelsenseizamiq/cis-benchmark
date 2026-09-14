@@ -190,7 +190,7 @@ def test_wrapped_title_is_joined_correctly():
         "Ensure a secondary verification factor is required for every "
         "user account that can sign in through the web console"
     )
-    assert rule_1_2.scored is True
+    assert rule_1_2.classification == "Scored"
 
 
 def test_cis_controls_cross_reference_is_not_mistaken_for_a_new_rule():
@@ -224,7 +224,7 @@ def test_incomplete_rule_is_flagged_not_dropped():
     assert "Remediation:" in rule.missing_sections
     assert rule.description  # still captured, just missing one section
     assert rule.profile_level == "Level 2"
-    assert rule.scored is False
+    assert rule.classification == "Not Scored"
 
 
 def test_missing_rule_in_body_raises_importer_error():
@@ -314,7 +314,7 @@ Nothing to see here.
     catalog = parse(text)
     rule = catalog.rules[0]
     assert rule.title == "Ensure a control has trailing PDF artifacts after its marker"
-    assert rule.scored is True
+    assert rule.classification == "Scored"
     assert "(Scored)" not in rule.title
 
 
@@ -493,8 +493,8 @@ Nothing to see here.
     )
     catalog = parse(text_with_broken_marker)
     rule = catalog.rules[0]
-    # scored is None internally, but coerced to False in ImportedRule
-    assert rule.scored is False
+    # scored is None internally, represented as "Unknown" in classification
+    assert rule.classification == "Unknown"
     # But now it's flagged incomplete with an explicit message
     assert rule.incomplete is True
     assert any("scored status" in m for m in rule.missing_sections)

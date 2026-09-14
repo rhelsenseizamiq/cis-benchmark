@@ -13,7 +13,7 @@ def now_iso() -> str:
 class ImportedRule:
     id: str
     title: str
-    scored: bool
+    classification: str
     profile_level: str
     section: str
     description: str = ""
@@ -36,6 +36,7 @@ class BenchmarkCatalog:
     benchmark_version: str
     source_filename: str
     extracted_at: str
+    version_verified: bool = True
     rules: List[ImportedRule] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -44,6 +45,7 @@ class BenchmarkCatalog:
             "benchmark_version": self.benchmark_version,
             "source_filename": self.source_filename,
             "extracted_at": self.extracted_at,
+            "version_verified": self.version_verified,
             "total_rules": len(self.rules),
             "incomplete_rules": sum(1 for r in self.rules if r.incomplete),
             "rules": [r.to_dict() for r in self.rules],

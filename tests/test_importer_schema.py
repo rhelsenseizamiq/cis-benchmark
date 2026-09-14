@@ -4,7 +4,7 @@ from cis_benchmark.importer.schema import ImportedRule, BenchmarkCatalog, now_is
 
 
 def test_imported_rule_defaults():
-    rule = ImportedRule(id="1.1", title="Example", scored=True, profile_level="Level 1", section="1. Example")
+    rule = ImportedRule(id="1.1", title="Example", classification="Scored", profile_level="Level 1", section="1. Example")
     assert rule.description == ""
     assert rule.references == []
     assert rule.incomplete is False
@@ -13,8 +13,8 @@ def test_imported_rule_defaults():
 
 def test_catalog_to_dict_includes_counts():
     rules = [
-        ImportedRule(id="1.1", title="A", scored=True, profile_level="Level 1", section="1. X"),
-        ImportedRule(id="1.2", title="B", scored=False, profile_level="Level 2", section="1. X", incomplete=True, missing_sections=["Remediation:"]),
+        ImportedRule(id="1.1", title="A", classification="Scored", profile_level="Level 1", section="1. X"),
+        ImportedRule(id="1.2", title="B", classification="Not Scored", profile_level="Level 2", section="1. X", incomplete=True, missing_sections=["Remediation:"]),
     ]
     catalog = BenchmarkCatalog(
         benchmark_name="CIS Test Benchmark",
@@ -28,6 +28,7 @@ def test_catalog_to_dict_includes_counts():
     assert d["incomplete_rules"] == 1
     assert len(d["rules"]) == 2
     assert d["rules"][0]["id"] == "1.1"
+    assert d["rules"][0]["classification"] == "Scored"
 
 
 def test_catalog_to_json_is_valid_json():
@@ -44,7 +45,7 @@ def test_catalog_write_creates_parent_dirs_and_file(tmp_path):
     catalog = BenchmarkCatalog(
         benchmark_name="CIS Test Benchmark", benchmark_version="9.9.9",
         source_filename="test.pdf", extracted_at=now_iso(),
-        rules=[ImportedRule(id="1.1", title="A", scored=True, profile_level="Level 1", section="1. X")],
+        rules=[ImportedRule(id="1.1", title="A", classification="Scored", profile_level="Level 1", section="1. X")],
     )
     out_path = tmp_path / "nested" / "dir" / "catalog.json"
     result_path = catalog.write(str(out_path))
@@ -54,3 +55,21 @@ def test_catalog_write_creates_parent_dirs_and_file(tmp_path):
     with open(out_path) as f:
         data = json.load(f)
     assert data["total_rules"] == 1
+
+
+def test_catalog_version_verified_defaults_true_and_is_serialized():
+    catalog = BenchmarkCatalog(
+        benchmark_name="CIS Test Benchmark", benchmark_version="9.9.9",
+        source_filename="test.pdf", extracted_at=now_iso(), rules=[],
+    )
+    assert catalog.version_verified is True
+    assert catalog.to_dict()["version_verified"] is True
+
+
+def test_catalog_version_verified_false_is_serialized():
+    catalog = BenchmarkCatalog(
+        benchmark_name="CIS Test Benchmark", benchmark_version="0.0.1",
+        source_filename="test.pdf", extracted_at=now_iso(), rules=[],
+        version_verified=False,
+    )
+    assert catalog.to_dict()["version_verified"] is False

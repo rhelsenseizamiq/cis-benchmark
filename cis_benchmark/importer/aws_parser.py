@@ -183,10 +183,18 @@ def parse(text: str, source_filename: str = "") -> BenchmarkCatalog:
             if l.strip()
         ]
 
+        # Convert AWS-specific scored boolean to classification string
+        if scored is True:
+            classification = "Scored"
+        elif scored is False:
+            classification = "Not Scored"
+        else:
+            classification = "Unknown"
+
         rules.append(ImportedRule(
             id=rule_id,
             title=title,
-            scored=bool(scored),
+            classification=classification,
             profile_level=profile_level,
             section=section,
             description=fields.get("Description:", ""),
