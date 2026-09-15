@@ -669,11 +669,11 @@ def test_summary_table_boundary_stops_at_next_appendix_not_just_change_history()
 
 # Regression fixture for the Workspace finding: the Summary Table (and
 # body rule-header lines) embed a profile-level tag directly before the
-# title, e.g. real "1.1.1 (L1) Ensure that between two and four global
-# admins are designated". This is cosmetic only — profile_level is
-# already correctly populated from the unrelated Profile Applicability:
-# body field below (unchanged logic) — the tag just needs stripping so
-# the title reads cleanly.
+# title, e.g. (fictional illustration) "1.1.1 (L1) Ensure that between
+# two and four example admin accounts are designated". This is cosmetic
+# only — profile_level is already correctly populated from the unrelated
+# Profile Applicability: body field below (unchanged logic) — the tag
+# just needs stripping so the title reads cleanly.
 FIXTURE_WITH_PROFILE_LEVEL_TAG = '''CIS Test Benchmark
 v9.9.9 - 01-01-2099
 
@@ -684,7 +684,7 @@ Recommendations
 1.1 (L1) Ensure account root access keys are removed (Scored)
 Profile Applicability:
 
- Enterprise Level 1
+ Example Org Level 1
 
 Description:
 
