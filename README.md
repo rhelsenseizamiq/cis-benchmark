@@ -11,7 +11,7 @@ A high-performance, professional terminal CLI security auditing tool for **AWS**
 - 🚀 **Fast Parallel Execution**: Evaluates 18 multi-cloud security checks in sub-second execution (< 1 second, network/API latency aside).
 - 🎨 **Rich Terminal Interface**: Professional ASCII header banner, live progress bars, status badges, and executive score cards.
 - ☁️ **Multi-Cloud Support**: AWS, Microsoft Azure, Google Cloud Platform (GCP), and Google Workspace.
-- 📥 **Benchmark PDF Import**: `cis import <pdf> --cloud <aws|azure|gcp>` parses an official CIS Benchmark PDF into a structured JSON rule catalog.
+- 📥 **Benchmark PDF Import**: `cis import <pdf> --cloud <aws|azure|gcp|workspace>` parses an official CIS Benchmark PDF into a structured JSON rule catalog.
 - 📊 **Multi-Format Export**: Generates **Interactive HTML Dashboard**, **Excel Workbook (.xlsx)**, and **Markdown (.md)** reports.
 
 ---
@@ -25,14 +25,14 @@ This tool does **not** implement the full official CIS Benchmarks. It implements
 | 🟠 AWS | 4 (root MFA, S3 public access block, SG unrestricted SSH, CloudTrail) | CIS AWS Foundations Benchmark **v1.2.0** has 49 recommendations (verified via `cis import`) |
 | 🔵 Azure | 3 (privileged MFA — manual, storage public blob, NSG unrestricted SSH) | CIS Azure Foundations Benchmark has 100+ recommendations |
 | 🟢 GCP | 6 (SA key age, primitive roles, firewall SSH/RDP, public buckets, Cloud SQL public IP) | CIS GCP Foundations Benchmark has 90+ recommendations |
-| 🔴 Google Workspace | 5 (4 are honest `MANUAL_CHECK` placeholders — see below; only SPF/DMARC is automated) | CIS Google Workspace Benchmark has 60+ recommendations |
+| 🔴 Google Workspace | 5 (4 are honest `MANUAL_CHECK` placeholders — see below; only SPF/DMARC is automated) | CIS Google Workspace Foundations Benchmark **v1.4** has 86 recommendations (verified via `cis import`) |
 
 **Two things this means in practice:**
 
 1. **The rule IDs are this project's own, not CIS's.** `AWS-1.1`, `GCP-3.2`, etc. are numbered by this codebase for its own bookkeeping — they do not correspond to the official CIS Benchmark's own section/control numbers. Don't cite them as if they were.
 2. **A "100% compliance score" from this tool is not the same as "CIS Benchmark compliant."** It means these 18 specific checks passed — nothing more. For a full, official assessment, use the actual CIS Benchmark PDFs (free, requires a CIS account) from **https://www.cisecurity.org/cis-benchmarks**, or a CIS-certified scanning tool.
 
-As of this version, `cis import` can parse official CIS Benchmark PDFs (AWS, Azure, GCP) into a complete, structured JSON catalog of all their recommendations (see "Importing an official benchmark PDF" below) — but this produces a *reference catalog* for coverage tracking, not new automated checks. A PDF describes what to check in prose; it can't generate the CLI-calling verification logic a real check needs. Google Workspace PDF import is not yet implemented.
+As of this version, `cis import` can parse official CIS Benchmark PDFs (AWS, Azure, GCP, Google Workspace) into a complete, structured JSON catalog of all their recommendations (see "Importing an official benchmark PDF" below) — but this produces a *reference catalog* for coverage tracking, not new automated checks. A PDF describes what to check in prose; it can't generate the CLI-calling verification logic a real check needs.
 
 ---
 
@@ -125,13 +125,14 @@ sudo apt-get install poppler-utils
 
 **Getting a PDF:** Download the official benchmark from
 [cisecurity.org/cis-benchmarks](https://www.cisecurity.org/cis-benchmarks)
-(free CIS account required). AWS, Azure, and GCP are supported today;
-Google Workspace is not yet implemented.
+(free CIS account required). AWS, Azure, GCP, and Google Workspace are
+supported today.
 
 ```bash
 cis import /path/to/CIS_AWS_Foundations_Benchmark.pdf --cloud aws
 cis import /path/to/CIS_Microsoft_Azure_Foundations_Benchmark.pdf --cloud azure
 cis import /path/to/GCP_CIS_Foundation_Benchmark.pdf --cloud gcp
+cis import /path/to/CIS_Google_Workspace_Foundations_Benchmark.pdf --cloud workspace
 ```
 
 Writes to `imports/aws_<version>.json` by default (override with
@@ -162,6 +163,7 @@ heading text and classification vocabulary between benchmark generations.
 | AWS | 1.2.0 |
 | Azure | 1.4.0 |
 | GCP | 1.2.0 |
+| Workspace | 1.4 |
 
 ---
 
