@@ -5,43 +5,43 @@ from cis_benchmark.importer.workspace_parser import parse
 # rule ID under a 2-segment grouping header, an embedded (L1) profile-level
 # tag stripped from the title, a 2-segment version string, and an extra
 # appendix (CIS Controls mapping) between the Summary Table and Change
-# History that must not corrupt the parsed rule list. No real CIS content.
-FIXTURE = '''CIS Google Workspace
-Foundations Benchmark
+# History that must not corrupt the parsed rule list. Completely fictional content.
+FIXTURE = '''Example Security Benchmark
+for Testing
 v1.4 - 01-01-2099
 
 Table of Contents
 
 Recommendations
-1 Directory
-1.1 Users
-1.1.1 (L1) Ensure that between two and four global admins are designated (Manual)
+1 Access Control
+1.1 Account Management
+1.1.1 (L1) Configure password complexity requirements for test system accounts (Manual)
 Profile Applicability:
 
- Enterprise Level 1
+ Testing Framework Level 1
 
 Description:
 
-Example description text.
+This is a fictional rule used for testing purposes only.
 
 Rationale:
 
-Example rationale text.
+Fictional rationale text for test fixture validation.
 
 Remediation:
 
-Example remediation text.
+Fictional remediation procedures for parser testing.
 
 Appendix: Summary Table
-1        Directory
-1.1      Users
-1.1.1    (L1) Ensure that between two and four global admins are designated (Manual)
+1        Access Control
+1.1      Account Management
+1.1.1    (L1) Configure password complexity requirements for test system accounts (Manual)
 
-Appendix: CIS Controls v7 IG 1 Mapped Recommendations
-1.1.1    9.9 Require A Second Authentication Factor For Privileged Accounts
+Appendix: Related Framework Mappings
+1.1.1    X.Y Sample Framework Reference for Rule Testing
 
 Appendix: Change History
-Nothing to see here.
+Test document with no real content.
 '''
 
 
@@ -57,7 +57,7 @@ def test_workspace_parser_uses_manual_automated_vocabulary():
 
 def test_workspace_parser_strips_profile_level_tag_from_title():
     catalog = parse(FIXTURE)
-    assert catalog.rules[0].title == "Ensure that between two and four global admins are designated"
+    assert catalog.rules[0].title == "Configure password complexity requirements for test system accounts"
     assert catalog.rules[0].profile_level == "Level 1"
 
 
