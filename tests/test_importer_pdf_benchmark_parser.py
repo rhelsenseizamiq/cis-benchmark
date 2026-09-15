@@ -354,7 +354,7 @@ Detach direct user policies.
 2.1 Ensure activity logging is enabled in all regions (Scored)
 Description:
 
-CloudTrail should be enabled across all regions.
+Activity logging should be enabled across all regions.
 
 Rationale:
 
@@ -362,10 +362,10 @@ Centralized logging aids incident response.
 
 Remediation:
 
-Enable CloudTrail in all regions.
+Enable activity logging in all regions.
 
 3 Networking
-3.1 Ensure no security group allows ingress from 0.0.0.0/0 to port 22 (Scored)
+3.1 Ensure no network security rule permits unrestricted inbound access to port 22 (Scored)
 Description:
 
 Security groups should restrict SSH ingress.
@@ -401,7 +401,7 @@ Appendix: Summary Table
 2      Logging and Monitoring
 2.1    Ensure activity logging is enabled in all regions (Scored)
 3      Networking
-3.1    Ensure no security group allows ingress from 0.0.0.0/0 to port 22 (Scored)
+3.1    Ensure no network security rule permits unrestricted inbound access to port 22 (Scored)
 3.2    Ensure network flow logging is enabled in all virtual networks (Scored)
 
 Appendix: Change History
