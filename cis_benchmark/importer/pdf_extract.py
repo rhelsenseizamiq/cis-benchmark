@@ -14,6 +14,13 @@ _INSTALL_HINT = (
 # Page-footer lines like "35 | P a g e" or "4|Page" (pdftotext -layout
 # sometimes letter-spaces the footer text; spacing varies by page).
 _PAGE_FOOTER_RE = re.compile(r"^\s*\d+\s*\|\s*P\s*a\s*g\s*e\s*$", re.MULTILINE)
+# A second page-footer format some benchmarks use instead: a bare
+# "Page N" line with no pipe separator.
+_PAGE_NUMBER_FOOTER_RE = re.compile(r"^\s*Page\s+\d+\s*$", re.MULTILINE)
+# A repeating confidentiality watermark line some benchmarks print on
+# every page, which otherwise leaks into extracted rule body text near
+# page breaks.
+_WATERMARK_RE = re.compile(r"^\s*Internal Only - General\s*$", re.MULTILINE)
 # Unicode Private Use Area glyphs (checkbox/bullet symbols from the PDF's
 # embedded fonts, e.g. U+F06F, U+F0B7) that pdftotext emits as raw codepoints
 # scattered inline in titles and body text.
@@ -44,5 +51,7 @@ def extract_text(pdf_path: str) -> str:
 
     text = result.stdout.replace("\x0c", "")
     text = _PAGE_FOOTER_RE.sub("", text)
+    text = _PAGE_NUMBER_FOOTER_RE.sub("", text)
+    text = _WATERMARK_RE.sub("", text)
     text = _PUA_GLYPH_RE.sub("", text)
     return text

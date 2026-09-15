@@ -72,3 +72,45 @@ def test_strips_private_use_area_glyphs():
     assert glyph_2 not in text
     assert "Title with" in text
     assert "glyph and" in text
+
+
+def test_strips_bare_page_number_footer_lines():
+    fake_result = MagicMock(
+        returncode=0,
+        stdout="Some content\n                    Page 1\nMore content\n              Page 42\nEnd\n",
+        stderr="",
+    )
+    with patch("cis_benchmark.importer.pdf_extract.shutil.which", return_value="/usr/bin/pdftotext"), \
+         patch("cis_benchmark.importer.pdf_extract.subprocess.run", return_value=fake_result):
+        text = extract_text("doc.pdf")
+    assert "Page 1" not in text
+    assert "Page 42" not in text
+    assert "Some content" in text
+    assert "More content" in text
+    assert "End" in text
+
+
+def test_page_number_footer_regex_does_not_strip_lines_with_extra_content():
+    fake_result = MagicMock(
+        returncode=0,
+        stdout="See Page 1 for details\n",
+        stderr="",
+    )
+    with patch("cis_benchmark.importer.pdf_extract.shutil.which", return_value="/usr/bin/pdftotext"), \
+         patch("cis_benchmark.importer.pdf_extract.subprocess.run", return_value=fake_result):
+        text = extract_text("doc.pdf")
+    assert "See Page 1 for details" in text
+
+
+def test_strips_confidentiality_watermark_lines():
+    fake_result = MagicMock(
+        returncode=0,
+        stdout="Audit:\n\nCheck the setting.\n\nInternal Only - General\n\nRemediation:\n\nFix it.\n",
+        stderr="",
+    )
+    with patch("cis_benchmark.importer.pdf_extract.shutil.which", return_value="/usr/bin/pdftotext"), \
+         patch("cis_benchmark.importer.pdf_extract.subprocess.run", return_value=fake_result):
+        text = extract_text("doc.pdf")
+    assert "Internal Only - General" not in text
+    assert "Check the setting." in text
+    assert "Remediation:" in text
