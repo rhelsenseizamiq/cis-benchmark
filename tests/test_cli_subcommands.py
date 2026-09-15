@@ -76,8 +76,12 @@ def test_run_import_writes_catalog_and_prints_summary(tmp_path, monkeypatch, cap
     assert "Parsed 1 rule(s) (0 incomplete)" in captured.out
 
 
+def test_run_import_accepts_workspace_cloud():
+    assert "workspace" in cli._IMPORT_PARSERS
+
+
 def test_run_import_rejects_unimplemented_cloud():
-    args = argparse.Namespace(cloud="workspace", pdf_path="fake.pdf", output=None)
+    args = argparse.Namespace(cloud="digitalocean", pdf_path="fake.pdf", output=None)
     with pytest.raises(ImporterError, match="not implemented yet"):
         cli._run_import(args)
 
@@ -134,6 +138,10 @@ def test_run_import_wraps_unwritable_output_path_in_importer_error(monkeypatch):
 
 
 def test_main_prints_clean_error_and_exits_1_on_importer_error(monkeypatch, capsys):
+    # "workspace" must stay a real --cloud choice so this test still goes
+    # through real argparse validation; the unimplemented-cloud path is
+    # simulated instead by removing it from _IMPORT_PARSERS for this test.
+    monkeypatch.setattr(cli, "_IMPORT_PARSERS", {"aws": cli._IMPORT_PARSERS["aws"]})
     monkeypatch.setattr(cli.sys, "argv", ["cis", "import", "fake.pdf", "--cloud", "workspace"])
     with pytest.raises(SystemExit) as exc_info:
         cli.main()

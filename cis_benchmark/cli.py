@@ -16,13 +16,14 @@ from .core.engine import ComplianceEngine
 from .importer.aws_parser import parse as parse_aws
 from .importer.azure_parser import parse as parse_azure
 from .importer.gcp_parser import parse as parse_gcp
+from .importer.workspace_parser import parse as parse_workspace
 from .importer.errors import ImporterError
 from .importer.pdf_extract import extract_text
 from .reporters.doc_reporter import DocReporter
 from .reporters.excel_reporter import ExcelReporter
 from .reporters.html_reporter import HTMLReporter
 
-_IMPORT_PARSERS = {"aws": parse_aws, "azure": parse_azure, "gcp": parse_gcp}
+_IMPORT_PARSERS = {"aws": parse_aws, "azure": parse_azure, "gcp": parse_gcp, "workspace": parse_workspace}
 _KNOWN_COMMANDS = {"scan", "import"}
 
 BANNER = """
