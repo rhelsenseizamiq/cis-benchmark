@@ -114,3 +114,48 @@ def test_strips_confidentiality_watermark_lines():
     assert "Internal Only - General" not in text
     assert "Check the setting." in text
     assert "Remediation:" in text
+
+
+def test_strips_summary_table_checkbox_column_artifacts():
+    fake_result = MagicMock(
+        returncode=0,
+        stdout=(
+            "1.1       Ensure widgets are configured for the correct baseline        o       o\n"
+            "                          (Manual)\n"
+        ),
+        stderr="",
+    )
+    with patch("cis_benchmark.importer.pdf_extract.shutil.which", return_value="/usr/bin/pdftotext"), \
+         patch("cis_benchmark.importer.pdf_extract.subprocess.run", return_value=fake_result):
+        text = extract_text("doc.pdf")
+    assert "o       o" not in text
+    assert "Ensure widgets are configured for the correct baseline" in text
+    assert "(Manual)" in text
+
+
+def test_strips_checkbox_artifact_with_only_one_space_before_first_o():
+    # The gap before the first "o" varies with how much preceding text
+    # shares that line — confirmed on a real document where the row's
+    # text ran right up to the checkbox column, leaving only one space.
+    fake_result = MagicMock(
+        returncode=0,
+        stdout="Ensure no security groups allow ingress from 0.0.0.0/0 to o        o\n",
+        stderr="",
+    )
+    with patch("cis_benchmark.importer.pdf_extract.shutil.which", return_value="/usr/bin/pdftotext"), \
+         patch("cis_benchmark.importer.pdf_extract.subprocess.run", return_value=fake_result):
+        text = extract_text("doc.pdf")
+    assert "o        o" not in text
+    assert "Ensure no security groups allow ingress from 0.0.0.0/0 to" in text
+
+
+def test_checkbox_artifact_regex_does_not_strip_a_lone_letter_o_in_prose():
+    fake_result = MagicMock(
+        returncode=0,
+        stdout="Enable logging to detect anomalous activity, or investigate further.\n",
+        stderr="",
+    )
+    with patch("cis_benchmark.importer.pdf_extract.shutil.which", return_value="/usr/bin/pdftotext"), \
+         patch("cis_benchmark.importer.pdf_extract.subprocess.run", return_value=fake_result):
+        text = extract_text("doc.pdf")
+    assert text == "Enable logging to detect anomalous activity, or investigate further.\n"

@@ -3,9 +3,14 @@ from .schema import BenchmarkCatalog
 
 _CONFIG = BenchmarkParserConfig(
     benchmark_name="CIS Google Cloud Platform Foundation Benchmark",
-    appendix_marker="Appendix: Recommendation Summary",
+    # v5.0.0 renamed this heading to a single-line "Appendix: Summary
+    # Table" (matching AWS/Workspace); the older, already-verified v1.2.0
+    # real document used the wrapped "Appendix: Recommendation
+    # Summary\nTable" form, kept as a fallback.
+    appendix_marker="Appendix: Summary Table",
+    appendix_marker_fallbacks=["Appendix: Recommendation Summary"],
     classification_words=["Manual", "Automated"],
-    known_versions=["1.2.0"],
+    known_versions=["1.2.0", "5.0.0"],
 )
 
 

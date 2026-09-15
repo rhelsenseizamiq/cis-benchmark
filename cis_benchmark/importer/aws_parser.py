@@ -4,8 +4,11 @@ from .schema import BenchmarkCatalog
 _CONFIG = BenchmarkParserConfig(
     benchmark_name="CIS Amazon Web Services Foundations Benchmark",
     appendix_marker="Appendix: Summary Table",
-    classification_words=["Scored", "Not Scored"],
-    known_versions=["1.2.0"],
+    # v7.0.0 switched from Scored/Not Scored to Manual/Automated; both
+    # vocabularies are accepted since a real document only ever uses one
+    # consistently — a version's PDF never mixes them.
+    classification_words=["Scored", "Not Scored", "Manual", "Automated"],
+    known_versions=["1.2.0", "7.0.0"],
 )
 
 

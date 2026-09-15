@@ -25,6 +25,17 @@ _WATERMARK_RE = re.compile(r"^\s*Internal Only - General\s*$", re.MULTILINE)
 # embedded fonts, e.g. U+F06F, U+F0B7) that pdftotext emits as raw codepoints
 # scattered inline in titles and body text.
 _PUA_GLYPH_RE = re.compile(r"[-]")
+# A Summary Table "Set Correctly / Yes No" checkbox-column artifact some
+# benchmarks render as a literal pair of "o" characters (not a PUA glyph)
+# trailing the row's title/classification text at a fixed column position —
+# corrupts titles when the row wraps across lines. The gap before the
+# first "o" varies with how much preceding text shares that line (just 1
+# space when the text runs right up to the checkbox column); the gap
+# between the two "o"s is the reliable signal, always 2+ spaces (the
+# fixed column width) — confirmed against every real PDF on disk, with
+# zero matches outside the two real AWS documents that actually have this
+# rendering quirk.
+_CHECKBOX_ARTIFACT_RE = re.compile(r"\s+o\s{2,}o\s*$", re.MULTILINE)
 
 
 def extract_text(pdf_path: str) -> str:
@@ -53,5 +64,6 @@ def extract_text(pdf_path: str) -> str:
     text = _PAGE_FOOTER_RE.sub("", text)
     text = _PAGE_NUMBER_FOOTER_RE.sub("", text)
     text = _WATERMARK_RE.sub("", text)
+    text = _CHECKBOX_ARTIFACT_RE.sub("", text)
     text = _PUA_GLYPH_RE.sub("", text)
     return text

@@ -875,3 +875,138 @@ def test_cis_controls_cross_reference_matching_a_later_rule_id_does_not_truncate
     assert rule_4_3.description == "Real description for 4.3."
     assert "Decoy text" not in rule_4_3.description
     assert not rule_4_3.incomplete
+
+
+# Regression fixture for the newer-real-PDF-version finding: AWS v7.0.0's
+# title page reads "V7.0.0 - 03-25-2026" — capitalized "V" — while every
+# previously-verified real document used lowercase "v". The version regex
+# must accept either case.
+def test_version_regex_accepts_capitalized_v_prefix():
+    text = FIXTURE_HAPPY_PATH.replace("v9.9.9 - 01-01-2099", "V9.9.9 - 01-01-2099")
+    catalog = parse_benchmark(text, _AWS_CONFIG)
+    assert catalog.benchmark_version == "9.9.9"
+    assert catalog.version_verified is True
+
+
+# Regression fixture for the newer-real-PDF-version finding: Azure v6.0.0
+# and GCP v5.0.0 both changed their Summary Table heading from the older,
+# already-verified wrapped form ("Appendix: Recommendation Summary\nTable")
+# to a new single-line form ("Appendix: Summary Table") matching AWS's own
+# heading text. A config now names the new form as its primary
+# appendix_marker but must still locate the table via a configured
+# fallback when a document uses the older wrapped form — proving neither
+# format is silently broken by supporting the other.
+_CONFIG_WITH_FALLBACK_MARKER = BenchmarkParserConfig(
+    benchmark_name="CIS Test Benchmark 3",
+    appendix_marker="Appendix: Summary Table",
+    appendix_marker_fallbacks=["Appendix: Recommendation Summary"],
+    classification_words=["Manual", "Automated"],
+    known_versions=["9.9.9"],
+)
+
+FIXTURE_OLD_WRAPPED_MARKER = '''CIS Test Benchmark 3
+v9.9.9 - 01-01-2099
+
+Table of Contents
+
+Recommendations
+1 Identity and Access Management
+1.1 Ensure that federated identity accounts are required (Manual)
+Description:
+
+Example description text.
+
+Rationale:
+
+Example rationale text.
+
+Remediation:
+
+Example remediation text.
+
+Appendix: Recommendation Summary
+Table
+1        Identity and Access Management
+1.1      Ensure that federated identity accounts are required (Manual)
+
+Appendix: Change History
+Nothing to see here.
+'''
+
+FIXTURE_NEW_UNWRAPPED_MARKER = FIXTURE_OLD_WRAPPED_MARKER.replace(
+    "Appendix: Recommendation Summary\nTable", "Appendix: Summary Table"
+)
+
+
+def test_appendix_marker_falls_back_to_older_wrapped_form_when_primary_not_found():
+    catalog = parse_benchmark(FIXTURE_OLD_WRAPPED_MARKER, _CONFIG_WITH_FALLBACK_MARKER)
+    assert [r.id for r in catalog.rules] == ["1.1"]
+
+
+def test_appendix_marker_uses_primary_form_directly_when_present():
+    catalog = parse_benchmark(FIXTURE_NEW_UNWRAPPED_MARKER, _CONFIG_WITH_FALLBACK_MARKER)
+    assert [r.id for r in catalog.rules] == ["1.1"]
+
+
+def test_appendix_marker_raises_clear_error_when_neither_primary_nor_fallback_found():
+    broken = FIXTURE_OLD_WRAPPED_MARKER.replace("Appendix: Recommendation Summary\nTable", "Appendix: Something Else Entirely")
+    with pytest.raises(ImporterError, match="Could not locate any of"):
+        parse_benchmark(broken, _CONFIG_WITH_FALLBACK_MARKER)
+
+
+# Regression fixture for the AWS v7.0.0 finding: a rule's wrapped title
+# can have its SECOND line begin with a bare number that would otherwise
+# be misidentified as a new top-level section header (e.g. real
+# "...minimum length of\n14 or greater (Automated)" — "14" alone matches
+# the same bare-digit pattern a genuine section id like "2" does). The
+# real distinguishing signal, confirmed on the real document: every
+# genuine ID line sits at one fixed left-margin indent column, while a
+# wrapped continuation line sits deeper — a candidate ID-shaped line is
+# only treated as a new row if it's no more indented than the row
+# currently being accumulated.
+FIXTURE_NUMERIC_CONTINUATION_LINE = '''CIS Test Benchmark
+v9.9.9 - 01-01-2099
+
+Table of Contents
+
+Recommendations
+1 Identity and Access Management
+1.1 Ensure widget password policy requires minimum length of
+14 or greater (Automated)
+Description:
+
+Passwords should meet a minimum length requirement.
+
+Rationale:
+
+Short passwords are easier to brute force.
+
+Remediation:
+
+Increase the minimum required password length.
+
+Appendix: Summary Table
+      1      Identity and Access Management
+      1.1    Ensure widget password policy requires minimum length of
+             14 or greater (Automated)
+
+Appendix: Change History
+Nothing to see here.
+'''
+
+_NUMERIC_CONTINUATION_CONFIG = BenchmarkParserConfig(
+    benchmark_name="CIS Test Benchmark",
+    appendix_marker="Appendix: Summary Table",
+    classification_words=["Manual", "Automated"],
+    known_versions=["9.9.9"],
+)
+
+
+def test_numeric_wrapped_continuation_line_is_not_mistaken_for_a_new_section():
+    catalog = parse_benchmark(FIXTURE_NUMERIC_CONTINUATION_LINE, _NUMERIC_CONTINUATION_CONFIG)
+    assert len(catalog.rules) == 1
+    rule = catalog.rules[0]
+    assert rule.id == "1.1"
+    assert rule.title == "Ensure widget password policy requires minimum length of 14 or greater"
+    assert rule.classification == "Automated"
+    assert not rule.incomplete

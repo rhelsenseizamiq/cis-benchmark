@@ -12,7 +12,7 @@ from .schema import BenchmarkCatalog, ImportedRule, now_iso
 # doesn't depend on a given PDF happening to have zero left margin.
 _RULE_ID_RE = re.compile(r"^[ \t]*(\d+(?:\.\d+)+)\s")
 _SECTION_ID_RE = re.compile(r"^[ \t]*(\d+)\s+(.+)$")
-_VERSION_RE = re.compile(r"v(\d+(?:\.\d+)+)\s*-\s*[\d-]+")
+_VERSION_RE = re.compile(r"[vV](\d+(?:\.\d+)+)\s*-\s*[\d-]+")
 _L_TAG_RE = re.compile(r"^\(L\d\)\s*")
 _RECOMMENDATIONS_HEADING_RE = re.compile(r"\n[ \t]*Recommendations[ \t]*\n")
 
@@ -44,23 +44,37 @@ _REQUIRED_LABELS = ["Description:", "Rationale:", "Remediation:"]
 class BenchmarkParserConfig:
     benchmark_name: str
     appendix_marker: str
+    appendix_marker_fallbacks: List[str] = field(default_factory=list)
     classification_words: List[str] = field(default_factory=lambda: ["Scored", "Not Scored"])
     known_versions: List[str] = field(default_factory=list)
 
 
-def _find_last_index(text: str, marker: str) -> int:
-    """Finds the LAST occurrence of marker in text. Needed for markers that
-    also appear earlier in the document's own Table of Contents as a
-    dot-leader entry — the real section is always the last occurrence,
-    never the first.
+def _find_marker(text: str, config: "BenchmarkParserConfig", start_pos: int = 0, last: bool = False) -> Tuple[int, str]:
+    """Locates the Summary Table appendix heading, trying config.appendix_marker
+    first and falling back to config.appendix_marker_fallbacks in order.
+    Some clouds changed this heading's exact wording between benchmark
+    generations (e.g. Azure/GCP's older "Appendix: Recommendation
+    Summary\\nTable" vs. newer "Appendix: Summary Table") — trying known
+    alternates keeps older real documents parseable too, without the
+    engine ever guessing which format a given document uses.
+
+    last=True searches for the LAST occurrence (needed for the
+    TOC-collision-safe Summary Table search — the real section is always
+    the last occurrence, never the first); last=False (the default)
+    searches forward from start_pos for the first occurrence.
+
+    Returns (index, matched_marker) — the caller needs matched_marker's
+    own length/text, not just where it was found.
     """
-    idx = text.rfind(marker)
-    if idx == -1:
-        raise ImporterError(
-            f"Could not locate {marker!r} in the extracted text — this "
-            "document's structure doesn't match what this parser expects."
-        )
-    return idx
+    candidates = [config.appendix_marker, *config.appendix_marker_fallbacks]
+    for marker in candidates:
+        idx = text.rfind(marker) if last else text.find(marker, start_pos)
+        if idx != -1:
+            return idx, marker
+    raise ImporterError(
+        f"Could not locate any of {candidates!r} in the extracted text — "
+        "this document's structure doesn't match what this parser expects."
+    )
 
 
 def _parse_summary_table(text: str, config: BenchmarkParserConfig, class_re: "re.Pattern"):
@@ -78,8 +92,8 @@ def _parse_summary_table(text: str, config: BenchmarkParserConfig, class_re: "re
     caller (parse_benchmark) disambiguates them using body content, since
     that information isn't available at this stage.
     """
-    start = _find_last_index(text, config.appendix_marker)
-    end = text.find("Appendix:", start + len(config.appendix_marker))
+    start, matched_marker = _find_marker(text, config, last=True)
+    end = text.find("Appendix:", start + len(matched_marker))
     if end == -1:
         end = len(text)
     table_text = text[start:end]
@@ -88,9 +102,10 @@ def _parse_summary_table(text: str, config: BenchmarkParserConfig, class_re: "re
     current_section = ""
     pending_id = None
     pending_lines = []
+    pending_indent = None
 
     def flush():
-        nonlocal pending_id, pending_lines
+        nonlocal pending_id, pending_lines, pending_indent
         if pending_id is not None:
             joined = " ".join(l.strip() for l in pending_lines if l.strip())
             joined = _L_TAG_RE.sub("", joined.strip())
@@ -100,22 +115,39 @@ def _parse_summary_table(text: str, config: BenchmarkParserConfig, class_re: "re
             anchors.append((pending_id, current_section, title, classification))
         pending_id = None
         pending_lines = []
+        pending_indent = None
 
     for line in table_text.splitlines():
         stripped = line.strip()
         if not stripped:
             continue
-        rule_m = _RULE_ID_RE.match(line)
-        if rule_m:
-            flush()
-            pending_id = rule_m.group(1)
-            pending_lines = [line[rule_m.end():]]
-            continue
-        section_m = _SECTION_ID_RE.match(line)
-        if section_m and "." not in section_m.group(1):
-            flush()
-            current_section = f"{section_m.group(1)}. {section_m.group(2).strip()}"
-            continue
+        indent = len(line) - len(line.lstrip(" \t"))
+
+        # A candidate rule-ID/section-ID match is only treated as the
+        # start of a genuine new row if it's no more indented than the
+        # row currently being accumulated — a more deeply indented line
+        # matching the same digit pattern is title continuation text
+        # that happens to start with a number (e.g. a real wrapped
+        # "...minimum length of\n14 or greater (Automated)", where "14"
+        # alone matches the same bare-digit pattern a genuine top-level
+        # section id like "2" does). Every genuine ID line sits at one
+        # fixed left-margin indent column; every continuation line sits
+        # deeper — confirmed on the real AWS v7.0.0 document.
+        is_continuation_depth = pending_id is not None and indent > pending_indent
+
+        if not is_continuation_depth:
+            rule_m = _RULE_ID_RE.match(line)
+            if rule_m:
+                flush()
+                pending_id = rule_m.group(1)
+                pending_indent = indent
+                pending_lines = [line[rule_m.end():]]
+                continue
+            section_m = _SECTION_ID_RE.match(line)
+            if section_m and "." not in section_m.group(1):
+                flush()
+                current_section = f"{section_m.group(1)}. {section_m.group(2).strip()}"
+                continue
         if pending_id is not None:
             pending_lines.append(line)
     flush()
@@ -229,7 +261,8 @@ def parse_benchmark(text: str, config: BenchmarkParserConfig, source_filename: s
             "this parser expects."
         )
     body_start = body_start_m.start()
-    body_end = text.find(config.appendix_marker, body_start)
+    _, matched_marker = _find_marker(text, config, last=True)
+    body_end = text.find(matched_marker, body_start)
     if body_end == -1:
         body_end = len(text)
     body = text[body_start:body_end]

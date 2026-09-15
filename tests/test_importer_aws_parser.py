@@ -56,3 +56,25 @@ def test_aws_parser_unknown_version_is_not_verified():
     unknown_version_text = FIXTURE.replace("v1.2.0 - 01-01-2099", "v9.9.9 - 01-01-2099")
     catalog = parse(unknown_version_text)
     assert catalog.version_verified is False
+
+
+# Regression fixture for the AWS v7.0.0 finding: that version switched
+# classification vocabulary from Scored/Not Scored to Manual/Automated —
+# both must be recognized, since a Scored/Not Scored real document (the
+# already-verified v1.2.0) can still be imported too.
+FIXTURE_MANUAL_AUTOMATED = FIXTURE.replace(
+    "v1.2.0 - 01-01-2099", "v7.0.0 - 01-01-2099"
+).replace(
+    "Avoid using the primary administrative account for routine operations (Scored)",
+    "Avoid using the primary administrative account for routine operations (Manual)",
+)
+
+
+def test_aws_parser_also_accepts_manual_automated_vocabulary():
+    catalog = parse(FIXTURE_MANUAL_AUTOMATED)
+    assert catalog.rules[0].classification == "Manual"
+
+
+def test_aws_parser_second_known_version_is_verified():
+    catalog = parse(FIXTURE_MANUAL_AUTOMATED)  # fixture uses v7.0.0
+    assert catalog.version_verified is True

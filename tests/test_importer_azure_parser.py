@@ -64,3 +64,26 @@ def test_azure_parser_unknown_version_is_not_verified():
     unknown_version_text = FIXTURE.replace("v1.4.0 - 01-01-2099", "v9.9.9 - 01-01-2099")
     catalog = parse(unknown_version_text)
     assert catalog.version_verified is False
+
+
+# Regression fixture for the Azure v6.0.0 finding: the real document's
+# Summary Table heading changed from the older wrapped
+# "Appendix: Recommendation Summary\nTable" to a new single-line
+# "Appendix: Summary Table" (matching AWS/Workspace's convention). Both
+# forms must keep working since the older, already-verified v1.4.0 real
+# document used the wrapped form.
+FIXTURE_NEW_HEADING = FIXTURE.replace(
+    "v1.4.0 - 01-01-2099", "v6.0.0 - 01-01-2099"
+).replace(
+    "Appendix: Recommendation Summary\nTable", "Appendix: Summary Table"
+)
+
+
+def test_azure_parser_handles_new_unwrapped_appendix_heading():
+    catalog = parse(FIXTURE_NEW_HEADING)
+    assert len(catalog.rules) == 1
+
+
+def test_azure_parser_second_known_version_is_verified():
+    catalog = parse(FIXTURE_NEW_HEADING)  # fixture uses v6.0.0
+    assert catalog.version_verified is True

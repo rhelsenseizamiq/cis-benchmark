@@ -160,9 +160,9 @@ heading text and classification vocabulary between benchmark generations.
 
 | Cloud | Verified version(s) |
 | :--- | :--- |
-| AWS | 1.2.0 |
-| Azure | 1.4.0 |
-| GCP | 1.2.0 |
+| AWS | 1.2.0, 7.0.0 |
+| Azure | 1.4.0, 6.0.0 |
+| GCP | 1.2.0, 5.0.0 |
 | Workspace | 1.4 |
 
 ---
