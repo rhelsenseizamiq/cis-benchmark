@@ -354,7 +354,7 @@ Table of Contents
 
 Recommendations
 1 Identity and Access Management
-1.1 Avoid the use of the "root" account (Scored)
+1.1 Avoid using the primary administrative account for routine operations (Scored)
 Profile Applicability:
 
  Level 1
@@ -386,8 +386,8 @@ CIS Controls:
 9.9 Require A Second Authentication Factor For Privileged Accounts
 Require a second authentication factor for all privileged account access.
 
-1.2 Ensure multi-factor authentication (MFA) is enabled for all IAM users that have a
-console password (Scored)
+1.2 Ensure a secondary verification factor is required for every user account that can
+sign in through the web console (Scored)
 Profile Applicability:
 
  Level 1
@@ -408,7 +408,7 @@ Run the following command:
 
 Remediation:
 
-Enable MFA for all IAM users with a console password.
+Require a second authentication factor for every user account that can sign in through the web console.
 
 References:
 
@@ -448,9 +448,9 @@ Appendix: Summary Table
                                                                           Correctly
                                                                           Yes No
 1      Identity and Access Management
-1.1    Avoid the use of the "root" account (Scored)
-1.2    Ensure multi-factor authentication (MFA) is enabled for all
-       IAM users that have a console password (Scored)
+1.1    Avoid using the primary administrative account for routine operations (Scored)
+1.2    Ensure a secondary verification factor is required for every
+       user account that can sign in through the web console (Scored)
 1.3    Ensure this rule is intentionally left incomplete (Not Scored)
 
 Appendix: Change History
@@ -468,7 +468,7 @@ Table of Contents
 
 Recommendations
 1 Identity and Access Management
-1.1 Avoid the use of the "root" account (Scored)
+1.1 Avoid using the primary administrative account for routine operations (Scored)
 Profile Applicability:
 
  Level 1
@@ -497,7 +497,7 @@ References:
 
 Appendix: Summary Table
 1      Identity and Access Management
-1.1    Avoid the use of the "root" account (Scored)
+1.1    Avoid using the primary administrative account for routine operations (Scored)
 1.2    This rule is listed in the summary table but never appears in the body (Scored)
 
 Appendix: Change History
@@ -520,8 +520,8 @@ def test_wrapped_title_is_joined_correctly():
     catalog = parse(FIXTURE_HAPPY_PATH)
     rule_1_2 = next(r for r in catalog.rules if r.id == "1.2")
     assert rule_1_2.title == (
-        "Ensure multi-factor authentication (MFA) is enabled for all "
-        "IAM users that have a console password"
+        "Ensure a secondary verification factor is required for every "
+        "user account that can sign in through the web console"
     )
     assert rule_1_2.scored is True
 
@@ -1085,7 +1085,7 @@ print('sample rule 1.13:', json.dumps([r for r in d['rules'] if r['id']=='1.13']
 "
 ```
 
-Expected: `total_rules: 49`, `incomplete_rules: 0`, `benchmark_version: 1.2.0`, and rule `1.13`'s fields (title "Ensure MFA is enabled for the "root" account", description/rationale/audit/remediation all populated) match what was manually inspected during design. If this doesn't match, stop and fix `aws_parser.py` before writing docs that claim this works — do not document a feature that doesn't actually work against a real file.
+Expected: `total_rules: 49`, `incomplete_rules: 0`, `benchmark_version: 1.2.0`, and rule `1.13`'s fields (title populated with the real document's own wording, description/rationale/audit/remediation all populated) match what was manually inspected during design. If this doesn't match, stop and fix `aws_parser.py` before writing docs that claim this works — do not document a feature that doesn't actually work against a real file.
 
 - [ ] **Step 2: Update README**
 
