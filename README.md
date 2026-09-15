@@ -129,10 +129,19 @@ sudo apt-get install poppler-utils
 supported today.
 
 ```bash
-cis import /path/to/CIS_AWS_Foundations_Benchmark.pdf --cloud aws
-cis import /path/to/CIS_Microsoft_Azure_Foundations_Benchmark.pdf --cloud azure
-cis import /path/to/GCP_CIS_Foundation_Benchmark.pdf --cloud gcp
-cis import /path/to/CIS_Google_Workspace_Foundations_Benchmark.pdf --cloud workspace
+cis import /path/to/CIS_Amazon_Web_Services_Foundations_Benchmark_v7.0.0.pdf --cloud aws
+cis import /path/to/CIS_Microsoft_Azure_Foundations_Benchmark_v6.0.0.pdf --cloud azure
+cis import /path/to/CIS_Google_Cloud_Platform_Foundation_Benchmark_v5.0.0.pdf --cloud gcp
+cis import /path/to/CIS_Google_Workspace_Foundations_Benchmark_v1.4.pdf --cloud workspace
+```
+
+Older, already-verified versions work too — `cis import` doesn't care about
+the filename, only `--cloud` and the PDF's actual content:
+
+```bash
+cis import /path/to/CIS_Amazon_Web_Services_Foundations_Benchmark_v1.2.0.pdf --cloud aws
+cis import /path/to/CIS_Microsoft_Azure_Foundations_Benchmark_v1.4.0.pdf --cloud azure
+cis import /path/to/CIS_Google_Cloud_Platform_Foundation_Benchmark_v1.2.0.pdf --cloud gcp
 ```
 
 Writes to `imports/aws_<version>.json` by default (override with
