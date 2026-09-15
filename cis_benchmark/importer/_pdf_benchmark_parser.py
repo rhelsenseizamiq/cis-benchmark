@@ -5,10 +5,16 @@ from typing import List, Optional, Tuple
 from .errors import ImporterError
 from .schema import BenchmarkCatalog, ImportedRule, now_iso
 
-_RULE_ID_RE = re.compile(r"^(\d+(?:\.\d+)+)\s")
-_SECTION_ID_RE = re.compile(r"^(\d+)\s+(.+)$")
+# pdftotext -layout preserves each source PDF's own left margin, which
+# some benchmarks render as a consistent run of leading spaces before
+# every body line, summary-table row, and section label. All line-start
+# anchors below tolerate that optional horizontal whitespace so parsing
+# doesn't depend on a given PDF happening to have zero left margin.
+_RULE_ID_RE = re.compile(r"^[ \t]*(\d+(?:\.\d+)+)\s")
+_SECTION_ID_RE = re.compile(r"^[ \t]*(\d+)\s+(.+)$")
 _VERSION_RE = re.compile(r"v(\d+(?:\.\d+)+)\s*-\s*[\d-]+")
 _L_TAG_RE = re.compile(r"^\(L\d\)\s*")
+_RECOMMENDATIONS_HEADING_RE = re.compile(r"\n[ \t]*Recommendations[ \t]*\n")
 
 _LABELS = [
     "Profile Applicability:",
@@ -33,21 +39,11 @@ class BenchmarkParserConfig:
     known_versions: List[str] = field(default_factory=list)
 
 
-def _find_index(text: str, marker: str) -> int:
-    idx = text.find(marker)
-    if idx == -1:
-        raise ImporterError(
-            f"Could not locate {marker!r} in the extracted text — this "
-            "document's structure doesn't match what this parser expects."
-        )
-    return idx
-
-
 def _find_last_index(text: str, marker: str) -> int:
-    """Like _find_index, but returns the LAST occurrence. Needed for
-    markers that also appear earlier in the document's own Table of
-    Contents as a dot-leader entry — the real section is always the last
-    occurrence, never the first.
+    """Finds the LAST occurrence of marker in text. Needed for markers that
+    also appear earlier in the document's own Table of Contents as a
+    dot-leader entry — the real section is always the last occurrence,
+    never the first.
     """
     idx = text.rfind(marker)
     if idx == -1:
@@ -104,7 +100,7 @@ def _parse_summary_table(text: str, config: BenchmarkParserConfig, class_re: "re
         if rule_m:
             flush()
             pending_id = rule_m.group(1)
-            pending_lines = [line[len(pending_id):]]
+            pending_lines = [line[rule_m.end():]]
             continue
         section_m = _SECTION_ID_RE.match(line)
         if section_m and "." not in section_m.group(1):
@@ -123,20 +119,25 @@ def _parse_summary_table(text: str, config: BenchmarkParserConfig, class_re: "re
     return anchors
 
 
+_LABEL_RES = {label: re.compile(rf"\n[ \t]*{re.escape(label)}") for label in _LABELS}
+
+
 def _split_block_into_sections(block: str) -> dict:
     """Splits one rule's raw text block on the fixed CIS section labels,
-    keeping only the labels actually present in this block.
+    keeping only the labels actually present in this block. Tolerates an
+    optional left-margin indent before the label, same as the line-start
+    anchors above.
     """
     positions = []
     for label in _LABELS:
-        idx = block.find(f"\n{label}")
-        if idx != -1:
-            positions.append((idx, label))
+        m = _LABEL_RES[label].search(block)
+        if m:
+            positions.append((m.start(), m.end(), label))
     positions.sort()
 
     sections = {}
-    for i, (idx, label) in enumerate(positions):
-        content_start = idx + 1 + len(label)
+    for i, (_start, end, label) in enumerate(positions):
+        content_start = end
         content_end = positions[i + 1][0] if i + 1 < len(positions) else len(block)
         sections[label] = block[content_start:content_end].strip()
     return sections
@@ -159,8 +160,16 @@ def parse_benchmark(text: str, config: BenchmarkParserConfig, source_filename: s
     # Unlike the appendix marker, this marker is safe with the first
     # occurrence: the TOC's own "Recommendations" entry always has trailing
     # dot-leaders/a page number on the same line, so it never matches this
-    # exact-line marker (which requires an immediate newline after the word).
-    body_start = _find_index(text, "\nRecommendations\n")
+    # exact-line marker (which requires the line to contain nothing but the
+    # word itself, modulo the left-margin indent tolerated by the regex).
+    body_start_m = _RECOMMENDATIONS_HEADING_RE.search(text)
+    if not body_start_m:
+        raise ImporterError(
+            "Could not locate the 'Recommendations' section heading in the "
+            "extracted text — this document's structure doesn't match what "
+            "this parser expects."
+        )
+    body_start = body_start_m.start()
     body_end = text.find(config.appendix_marker, body_start)
     if body_end == -1:
         body_end = len(text)
@@ -170,7 +179,7 @@ def parse_benchmark(text: str, config: BenchmarkParserConfig, source_filename: s
     missing_ids = []
     cursor = 0
     for i, (rule_id, section, title, classification) in enumerate(anchors):
-        pattern = re.compile(rf"^{re.escape(rule_id)}\s", re.MULTILINE)
+        pattern = re.compile(rf"^[ \t]*{re.escape(rule_id)}\s", re.MULTILINE)
         m = pattern.search(body, cursor)
         if not m:
             missing_ids.append(rule_id)
@@ -178,7 +187,7 @@ def parse_benchmark(text: str, config: BenchmarkParserConfig, source_filename: s
 
         next_start = len(body)
         for next_id, *_rest in anchors[i + 1:]:
-            next_pattern = re.compile(rf"^{re.escape(next_id)}\s", re.MULTILINE)
+            next_pattern = re.compile(rf"^[ \t]*{re.escape(next_id)}\s", re.MULTILINE)
             next_m = next_pattern.search(body, m.end())
             if next_m:
                 next_start = next_m.start()

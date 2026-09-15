@@ -714,3 +714,55 @@ def test_leading_profile_level_tag_is_stripped_from_title():
     assert "(L1)" not in rule.title
     assert rule.classification == "Scored"
     assert rule.profile_level == "Level 1"
+
+
+# Regression fixture for the Workspace v1.4 real-PDF finding: pdftotext
+# -layout preserves that document's own left margin, rendering the
+# "Recommendations" heading, every summary-table row, every rule-ID body
+# line, and every section label ("Description:", "Rationale:", etc.) with
+# a consistent run of leading spaces instead of starting at column 0. The
+# old column-0-anchored regexes/string matches silently found zero
+# recommendations against this real document even though every unit test
+# here (all written with unindented fixtures) stayed green.
+FIXTURE_WITH_LEFT_MARGIN_INDENT = '''CIS Test Benchmark
+v9.9.9 - 01-01-2099
+
+            Table of Contents
+
+            Recommendations
+            1 Identity and Access Management
+            1.1 Ensure account root access keys are removed (Scored)
+            Profile Applicability:
+
+             Level 1
+
+            Description:
+
+            Root access keys should not exist.
+
+            Rationale:
+
+            Root has unrestricted access.
+
+            Remediation:
+
+            Remove root access keys.
+
+            Appendix: Summary Table
+              1      Identity and Access Management
+              1.1    Ensure account root access keys are removed (Scored)
+
+            Appendix: Change History
+            Nothing to see here.
+'''
+
+
+def test_consistent_left_margin_indent_does_not_hide_rules():
+    catalog = parse_benchmark(FIXTURE_WITH_LEFT_MARGIN_INDENT, _AWS_CONFIG)
+    assert [r.id for r in catalog.rules] == ["1.1"]
+    rule = catalog.rules[0]
+    assert rule.title == "Ensure account root access keys are removed"
+    assert rule.classification == "Scored"
+    assert rule.profile_level == "Level 1"
+    assert rule.description == "Root access keys should not exist."
+    assert not rule.incomplete
