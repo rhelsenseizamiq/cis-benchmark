@@ -5,9 +5,10 @@ from typing import List, Optional, Tuple
 from .errors import ImporterError
 from .schema import BenchmarkCatalog, ImportedRule, now_iso
 
-_RULE_ID_RE = re.compile(r"^(\d+(?:\.\d+){1,2})\s")
+_RULE_ID_RE = re.compile(r"^(\d+(?:\.\d+)+)\s")
 _SECTION_ID_RE = re.compile(r"^(\d+)\s+(.+)$")
-_VERSION_RE = re.compile(r"v(\d+\.\d+\.\d+)\s*-\s*[\d-]+")
+_VERSION_RE = re.compile(r"v(\d+(?:\.\d+)+)\s*-\s*[\d-]+")
+_L_TAG_RE = re.compile(r"^\(L\d\)\s*")
 
 _LABELS = [
     "Profile Applicability:",
@@ -28,7 +29,6 @@ _REQUIRED_LABELS = ["Description:", "Rationale:", "Remediation:"]
 class BenchmarkParserConfig:
     benchmark_name: str
     appendix_marker: str
-    appendix_end_marker: str = "Appendix: Change History"
     classification_words: List[str] = field(default_factory=lambda: ["Scored", "Not Scored"])
     known_versions: List[str] = field(default_factory=list)
 
@@ -74,7 +74,7 @@ def _parse_summary_table(text: str, config: BenchmarkParserConfig, class_re: "re
     that information isn't available at this stage.
     """
     start = _find_last_index(text, config.appendix_marker)
-    end = text.find(config.appendix_end_marker, start)
+    end = text.find("Appendix:", start + len(config.appendix_marker))
     if end == -1:
         end = len(text)
     table_text = text[start:end]
@@ -88,6 +88,7 @@ def _parse_summary_table(text: str, config: BenchmarkParserConfig, class_re: "re
         nonlocal pending_id, pending_lines
         if pending_id is not None:
             joined = " ".join(l.strip() for l in pending_lines if l.strip())
+            joined = _L_TAG_RE.sub("", joined.strip())
             m = class_re.search(joined)
             classification = m.group(1) if m else None
             title = joined[:m.start()].strip() if m else joined.strip()

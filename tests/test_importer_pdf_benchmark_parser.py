@@ -546,3 +546,171 @@ def test_grouping_header_with_no_marker_and_no_body_content_is_excluded():
     assert ids == ["1.1.1", "1.1.2"]
     assert "1.1" not in ids
     assert len(catalog.rules) == 2
+
+
+# Regression fixtures for the Workspace finding: rule IDs go up to 6
+# segments deep (e.g. real "3.1.2.1.1.6"), far beyond AWS/Azure/GCP's max
+# of 3 — the old _RULE_ID_RE (capped at {1,2} extra segments) silently
+# failed to match anything deeper, which was the root cause of an initial
+# broken run recovering only 32 of 86 real rules. Also exercises multiple
+# levels of intermediate grouping headers (2, 3, and 4 segments), each
+# with no classification marker and no body content, which must all be
+# dropped the same way the existing single-level grouping-header test
+# above already proves for a 2-segment header.
+FIXTURE_DEEP_NESTING = '''CIS Test Benchmark 2
+v9.9.9 - 01-01-2099
+
+Table of Contents
+
+Recommendations
+1 Sharing Controls
+1.1 Sharing Options
+1.1.1 File Sharing
+1.1.1.1 External Sharing
+1.1.1.1.1 Ensure external file sharing defaults to view-only access (Manual)
+Description:
+
+Files shared externally should default to view-only permissions.
+
+Rationale:
+
+View-only defaults reduce accidental data modification by external parties.
+
+Remediation:
+
+Set the external sharing default to view-only.
+
+Appendix: Recommendation Summary
+Table
+1          Sharing Controls
+1.1        Sharing Options
+1.1.1      File Sharing
+1.1.1.1    External Sharing
+1.1.1.1.1  Ensure external file sharing defaults to view-only access (Manual)
+
+Appendix: Change History
+Nothing to see here.
+'''
+
+
+def test_rule_id_regex_matches_ids_deeper_than_three_segments():
+    catalog = parse_benchmark(FIXTURE_DEEP_NESTING, _GENERIC_CONFIG)
+    assert [r.id for r in catalog.rules] == ["1.1.1.1.1"]
+    assert catalog.rules[0].classification == "Manual"
+
+
+def test_intermediate_multi_segment_grouping_headers_are_all_dropped():
+    catalog = parse_benchmark(FIXTURE_DEEP_NESTING, _GENERIC_CONFIG)
+    ids = [r.id for r in catalog.rules]
+    assert "1.1" not in ids
+    assert "1.1.1" not in ids
+    assert "1.1.1.1" not in ids
+    assert len(catalog.rules) == 1
+
+
+def test_version_regex_accepts_two_segment_version_string():
+    text = FIXTURE_HAPPY_PATH.replace("v9.9.9 - 01-01-2099", "v9.9 - 01-01-2099")
+    config = BenchmarkParserConfig(
+        benchmark_name="CIS Test Benchmark",
+        appendix_marker="Appendix: Summary Table",
+        classification_words=["Scored", "Not Scored"],
+        known_versions=["9.9"],
+    )
+    catalog = parse_benchmark(text, config)
+    assert catalog.benchmark_version == "9.9"
+    assert catalog.version_verified is True
+
+
+# Regression fixture for the Workspace finding: the Summary Table is
+# directly followed by an appendix type AWS/Azure/GCP don't have, sitting
+# between the Summary Table and Appendix: Change History. The old
+# end-boundary logic searched specifically for the literal string
+# "Appendix: Change History", which would sweep this extra appendix's
+# content into the table slice too (observed as duplicate/corrupted
+# anchors on the real document). The row inside the extra appendix below
+# deliberately reuses "1.1" as its leading token to prove it would corrupt
+# the anchor list if swept in.
+FIXTURE_EXTRA_APPENDIX_BEFORE_CHANGE_HISTORY = '''CIS Test Benchmark
+v9.9.9 - 01-01-2099
+
+Table of Contents
+
+Recommendations
+1 Identity and Access Management
+1.1 Ensure account root access keys are removed (Scored)
+Description:
+
+Root access keys should not exist.
+
+Rationale:
+
+Root has unrestricted access.
+
+Remediation:
+
+Remove root access keys.
+
+Appendix: Summary Table
+1      Identity and Access Management
+1.1    Ensure account root access keys are removed (Scored)
+
+Appendix: CIS Controls Mapped Recommendations
+1.1    9.9 Require A Second Authentication Factor For Privileged Accounts
+
+Appendix: Change History
+Nothing to see here.
+'''
+
+
+def test_summary_table_boundary_stops_at_next_appendix_not_just_change_history():
+    catalog = parse_benchmark(FIXTURE_EXTRA_APPENDIX_BEFORE_CHANGE_HISTORY, _AWS_CONFIG)
+    assert [r.id for r in catalog.rules] == ["1.1"]
+
+
+# Regression fixture for the Workspace finding: the Summary Table (and
+# body rule-header lines) embed a profile-level tag directly before the
+# title, e.g. real "1.1.1 (L1) Ensure that between two and four global
+# admins are designated". This is cosmetic only — profile_level is
+# already correctly populated from the unrelated Profile Applicability:
+# body field below (unchanged logic) — the tag just needs stripping so
+# the title reads cleanly.
+FIXTURE_WITH_PROFILE_LEVEL_TAG = '''CIS Test Benchmark
+v9.9.9 - 01-01-2099
+
+Table of Contents
+
+Recommendations
+1 Identity and Access Management
+1.1 (L1) Ensure account root access keys are removed (Scored)
+Profile Applicability:
+
+ Enterprise Level 1
+
+Description:
+
+Root access keys should not exist.
+
+Rationale:
+
+Root has unrestricted access.
+
+Remediation:
+
+Remove root access keys.
+
+Appendix: Summary Table
+1      Identity and Access Management
+1.1    (L1) Ensure account root access keys are removed (Scored)
+
+Appendix: Change History
+Nothing to see here.
+'''
+
+
+def test_leading_profile_level_tag_is_stripped_from_title():
+    catalog = parse_benchmark(FIXTURE_WITH_PROFILE_LEVEL_TAG, _AWS_CONFIG)
+    rule = catalog.rules[0]
+    assert rule.title == "Ensure account root access keys are removed"
+    assert "(L1)" not in rule.title
+    assert rule.classification == "Scored"
+    assert rule.profile_level == "Level 1"
