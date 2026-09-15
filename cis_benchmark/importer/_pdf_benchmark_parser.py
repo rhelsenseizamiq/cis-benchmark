@@ -16,6 +16,15 @@ _VERSION_RE = re.compile(r"v(\d+(?:\.\d+)+)\s*-\s*[\d-]+")
 _L_TAG_RE = re.compile(r"^\(L\d\)\s*")
 _RECOMMENDATIONS_HEADING_RE = re.compile(r"\n[ \t]*Recommendations[ \t]*\n")
 
+# How many leading words of a rule's title to require when anchoring that
+# rule's body header line (see _rule_header_pattern below). A prefix, not
+# the whole title, because the exact wrapping of a long title in the PDF's
+# extracted body text isn't guaranteed to match the Summary Table's own
+# joined/re-wrapped version verbatim — but a handful of leading words is
+# enough to distinguish a genuine header from a same-numbered row nested
+# inside an earlier rule's "CIS Controls:" cross-reference table.
+_TITLE_ANCHOR_WORDS = 5
+
 _LABELS = [
     "Profile Applicability:",
     "Description:",
@@ -122,6 +131,56 @@ def _parse_summary_table(text: str, config: BenchmarkParserConfig, class_re: "re
 _LABEL_RES = {label: re.compile(rf"\n[ \t]*{re.escape(label)}") for label in _LABELS}
 
 
+def _rule_header_pattern(rule_id: str, words: List[str]) -> "re.Pattern":
+    """Builds a regex requiring `rule_id` at (optionally indented)
+    line-start, followed by an optional "(L1)"/"(L2)" tag and then
+    `words` (a prefix of the rule's own title, already split on
+    whitespace) — or, if `words` is empty, just the ID.
+    """
+    tag = r"(?:\(L\d\)\s*)?"
+    if words:
+        title_prefix = r"\s+".join(re.escape(w) for w in words)
+        return re.compile(
+            rf"^[ \t]*{re.escape(rule_id)}\s+{tag}{title_prefix}", re.MULTILINE
+        )
+    return re.compile(rf"^[ \t]*{re.escape(rule_id)}\s", re.MULTILINE)
+
+
+def _find_rule_header(body: str, pos: int, rule_id: str, title: str) -> Optional["re.Match"]:
+    """Searches `body` (from `pos` onward) for this specific rule's
+    genuine header line — not a coincidentally same-numbered row inside
+    some earlier rule's "CIS Controls:" cross-reference table.
+
+    Requiring only the rule ID at (optionally indented) line-start isn't
+    enough: a benchmark's "CIS Controls:" section lists numbered safeguard
+    cross-references (e.g. "5.1 Establish and Maintain an Inventory of
+    Accounts") that are indented *more* deeply than a genuine rule header,
+    and when a safeguard number happens to equal a later real rule's ID, a
+    bare ID-plus-whitespace match binds to that table row instead of
+    waiting for the real header. The Summary Table already gives us each
+    rule's correct title, so require the ID to be followed by (an optional
+    tag, then) a prefix of its own title — a coincidental table row's
+    trailing text won't match that.
+
+    Tries the longest available title prefix (up to `_TITLE_ANCHOR_WORDS`
+    words) first, since that's the strongest discriminator, and only
+    relaxes to fewer words — down to a bare ID match as a last resort —
+    when no match exists with the stronger prefix anywhere in the
+    remaining body. This matters because the Summary Table's own
+    row-joining can occasionally trail extra, non-title text onto a
+    row (confirmed on the real Workspace PDF for a handful of
+    page-break-adjacent grouping headers); without this fallback, a
+    genuine rule/grouping-header would go unmatched entirely just because
+    its recorded title has a few trailing corrupted words.
+    """
+    all_words = title.split()
+    for n in range(min(_TITLE_ANCHOR_WORDS, len(all_words)), 0, -1):
+        m = _rule_header_pattern(rule_id, all_words[:n]).search(body, pos)
+        if m:
+            return m
+    return _rule_header_pattern(rule_id, []).search(body, pos)
+
+
 def _split_block_into_sections(block: str) -> dict:
     """Splits one rule's raw text block on the fixed CIS section labels,
     keeping only the labels actually present in this block. Tolerates an
@@ -179,16 +238,14 @@ def parse_benchmark(text: str, config: BenchmarkParserConfig, source_filename: s
     missing_ids = []
     cursor = 0
     for i, (rule_id, section, title, classification) in enumerate(anchors):
-        pattern = re.compile(rf"^[ \t]*{re.escape(rule_id)}\s", re.MULTILINE)
-        m = pattern.search(body, cursor)
+        m = _find_rule_header(body, cursor, rule_id, title)
         if not m:
             missing_ids.append(rule_id)
             continue
 
         next_start = len(body)
-        for next_id, *_rest in anchors[i + 1:]:
-            next_pattern = re.compile(rf"^[ \t]*{re.escape(next_id)}\s", re.MULTILINE)
-            next_m = next_pattern.search(body, m.end())
+        for next_id, _next_section, next_title, *_rest in anchors[i + 1:]:
+            next_m = _find_rule_header(body, m.end(), next_id, next_title)
             if next_m:
                 next_start = next_m.start()
                 break

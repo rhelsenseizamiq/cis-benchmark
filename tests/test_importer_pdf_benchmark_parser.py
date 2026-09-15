@@ -766,3 +766,112 @@ def test_consistent_left_margin_indent_does_not_hide_rules():
     assert rule.profile_level == "Level 1"
     assert rule.description == "Root access keys should not exist."
     assert not rule.incomplete
+
+
+# Regression fixture for a final-review finding: the shared engine's
+# per-rule body anchor requires only "<rule id><optional margin>
+# <whitespace>" at (optionally indented) line-start. A rule's own "CIS
+# Controls:" section lists numbered safeguard cross-references that are
+# indented MORE deeply than a genuine rule header, but that depth was
+# never checked — so when a safeguard number coincidentally equals a
+# LATER real rule's ID, the old anchor pattern binds to that indented
+# table row instead of waiting for the real header. That silently
+# truncates the earlier rule's cis_controls (the block ends right at the
+# collision row, losing every safeguard listed after it — undetectable
+# via `incomplete`, since "CIS Controls:" isn't a required label) and can
+# also corrupt the later rule's own parsed fields, since the collision
+# row becomes that later rule's own search-start cursor and a stray
+# label occurrence sitting in the truncated tail can then win the "first
+# occurrence" race used by _split_block_into_sections instead of the
+# label following the real header. Entirely fictional content — this
+# reproduces the collision *class* observed against the real Workspace
+# PDF (anchor "4.3" mis-binding into rule "4.2.5.1"'s own CIS Controls
+# table, and anchor "6.2" into rule "6.1"'s), not any real CIS wording.
+FIXTURE_COLLIDING_CIS_CONTROLS_NUMBER = '''CIS Test Benchmark
+v9.9.9 - 01-01-2099
+
+Table of Contents
+
+Recommendations
+4 Example Category
+4.2 Configure the example legacy widget baseline (Scored)
+Profile Applicability:
+
+ Level 1
+
+Description:
+
+Real description for 4.2.
+
+Rationale:
+
+Real rationale for 4.2.
+
+Remediation:
+
+Real remediation for 4.2.
+
+CIS Controls:
+
+9.1 Establish and Maintain a Software Inventory
+Track approved software across the fleet.
+    4.3 Handle An Unrelated Widget Safeguard Requirement
+
+Description:
+
+Decoy text that must never be mistaken for rule 4.3's real description.
+
+9.2 Address Unauthorized Software
+Remove software that is not on the approved software list.
+
+4.3 Configure the example modern widget baseline (Scored)
+Profile Applicability:
+
+ Level 1
+
+Description:
+
+Real description for 4.3.
+
+Rationale:
+
+Real rationale for 4.3.
+
+Remediation:
+
+Real remediation for 4.3.
+
+Appendix: Summary Table
+4      Example Category
+4.2    Configure the example legacy widget baseline (Scored)
+4.3    Configure the example modern widget baseline (Scored)
+
+Appendix: Change History
+Nothing to see here.
+'''
+
+
+def test_cis_controls_cross_reference_matching_a_later_rule_id_does_not_truncate_or_corrupt():
+    catalog = parse_benchmark(FIXTURE_COLLIDING_CIS_CONTROLS_NUMBER, _AWS_CONFIG)
+    ids = [r.id for r in catalog.rules]
+    assert ids == ["4.2", "4.3"]
+
+    rule_4_2 = next(r for r in catalog.rules if r.id == "4.2")
+    rule_4_3 = next(r for r in catalog.rules if r.id == "4.3")
+
+    # (a) The earlier rule's cis_controls must not be truncated at the
+    # coincidentally-numbered "4.3" row buried inside its own CIS
+    # Controls table — the safeguard row listed after the collision
+    # ("9.2 ...") must still be captured, not silently dropped.
+    assert "9.1 Establish and Maintain a Software Inventory" in rule_4_2.cis_controls
+    assert "9.2 Address Unauthorized Software" in rule_4_2.cis_controls
+    assert not rule_4_2.incomplete
+
+    # (b) The later anchor ("4.3") must bind to its own real header, not
+    # the coincidental table row inside 4.2's block — proven by its
+    # description being the real one, not the decoy text sitting between
+    # the collision row and the real header (which a mis-bound block
+    # start would otherwise pick up as the "first" Description: match).
+    assert rule_4_3.description == "Real description for 4.3."
+    assert "Decoy text" not in rule_4_3.description
+    assert not rule_4_3.incomplete
