@@ -1,6 +1,6 @@
 # 🛡️ CIS Unified Multi-Cloud Compliance & Audit CLI
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 A high-performance, professional terminal CLI security auditing tool for **AWS**, **Microsoft Azure**, **Google Cloud Platform (GCP)**, and **Google Workspace**.
 
@@ -236,4 +236,4 @@ CIS_Benchmark/
 
 ## 📄 License
 
-Licensed under the [Apache License 2.0](LICENSE).
+Licensed under the [GNU General Public License v3.0](LICENSE).
